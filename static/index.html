@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🚀 Crypto Trading Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:      #0d1117;
+    --panel:   #161b22;
+    --border:  #21262d;
+    --txt:     #e6edf3;
+    --muted:   #8b949e;
+    --green:   #3fb950;
+    --red:     #f85149;
+    --blue:    #58a6ff;
+    --orange:  #ffa657;
+    --purple:  #d2a8ff;
+    --yellow:  #e3b341;
+    --cyan:    #39d353;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--txt); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; }
+
+  /* ── Header ── */
+  header {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+  .logo span { color: var(--blue); }
+  .status-bar { display: flex; gap: 16px; align-items: center; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .updated { color: var(--muted); font-size: 12px; }
+
+  /* ── Layout ── */
+  .container { max-width: 1600px; margin: 0 auto; padding: 20px 24px; }
+  .grid-top { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px; }
+  .grid-mid  { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .grid-bot  { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; margin-bottom: 20px; }
+  .grid-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .card-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* ── Coin Cards ── */
+  .coin-card { cursor: default; transition: border-color .2s; }
+  .coin-card:hover { border-color: var(--blue); }
+  .coin-symbol { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .coin-price  { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .coin-change { font-size: 13px; font-weight: 600; }
+  .coin-meta   { margin-top: 10px; display: flex; flex-direction: column; gap: 3px; }
+  .coin-meta span { font-size: 11px; color: var(--muted); }
+  .coin-meta b { color: var(--txt); }
+  .funding-bar { height: 3px; border-radius: 2px; margin-top: 8px; background: var(--border); }
+  .funding-fill { height: 100%; border-radius: 2px; transition: width .5s; }
+
+  /* ── Sentiment Row ── */
+  .sentiment-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .sentiment-item { text-align: center; padding: 14px 10px; background: var(--bg); border-radius: 8px; }
+  .sentiment-val  { font-size: 28px; font-weight: 700; margin-bottom: 4px; }
+  .sentiment-lbl  { font-size: 11px; color: var(--muted); }
+
+  /* ── Fear & Greed Gauge ── */
+  .fg-wrap { display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px; }
+  .fg-num  { font-size: 48px; font-weight: 800; }
+  .fg-lbl  { font-size: 13px; }
+  .fg-bar  { width: 100%; height: 8px; border-radius: 4px;
+             background: linear-gradient(to right, var(--red), var(--orange), var(--yellow), var(--green));
+             position: relative; margin-top: 6px; }
+  .fg-needle { position: absolute; top: -4px; width: 4px; height: 16px;
+               background: var(--txt); border-radius: 2px; transform: translateX(-50%); transition: left .8s; }
+
+  /* ── Charts ── */
+  .chart-wrap { position: relative; height: 180px; }
+  canvas { width: 100% !important; }
+
+  /* ── Job Controls ── */
+  .jobs-panel {}
+  .job-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .job-row:last-child { border-bottom: none; }
+  .job-info { display: flex; flex-direction: column; gap: 3px; }
+  .job-name { font-weight: 600; font-size: 13px; }
+  .job-meta { font-size: 11px; color: var(--muted); }
+  .job-status { font-size: 11px; }
+  .btn {
+    background: var(--blue);
+    color: #000;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity .2s, transform .1s;
+    white-space: nowrap;
+  }
+  .btn:hover { opacity: .85; }
+  .btn:active { transform: scale(.97); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-green { background: var(--green); }
+  .btn-orange { background: var(--orange); }
+  .btn-red    { background: var(--red); }
+  .btn-full { width: 100%; margin-top: 10px; padding: 10px; font-size: 13px; }
+
+  /* ── Log ── */
+  .log-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    max-height: 120px;
+    overflow-y: auto;
+    margin-top: 10px;
+    line-height: 1.6;
+  }
+  .log-box .ok   { color: var(--green); }
+  .log-box .err  { color: var(--red); }
+  .log-running   { color: var(--yellow); animation: blink 1s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  /* ── Chart Images ── */
+  .chart-img-wrap { text-align: center; }
+  .chart-img {
+    width: 100%; border-radius: 8px;
+    border: 1px solid var(--border);
+    cursor: zoom-in;
+    transition: opacity .3s;
+  }
+  .chart-img:hover { opacity: .9; }
+  .chart-ts { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+  /* ── Lightbox ── */
+  #lightbox {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.85); z-index: 999;
+    justify-content: center; align-items: center;
+  }
+  #lightbox.show { display: flex; }
+  #lightbox img { max-width: 95vw; max-height: 95vh; border-radius: 8px; }
+
+  /* ── Responsive ── */
+  @media (max-width: 1100px) {
+    .grid-top { grid-template-columns: repeat(3, 1fr); }
+    .grid-mid, .grid-bot, .grid-charts { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 600px) {
+    .grid-top { grid-template-columns: 1fr 1fr; }
+    .sentiment-grid { grid-template-columns: 1fr; }
+  }
+
+  .green { color: var(--green); }
+  .red   { color: var(--red); }
+  .orange{ color: var(--orange); }
+  .blue  { color: var(--blue); }
+  .muted { color: var(--muted); }
+  .spinning { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🚀 <span>Crypto</span> Dashboard</div>
+  <div class="status-bar">
+    <div class="status-dot" id="wsDot" title="WebSocket"></div>
+    <span class="updated" id="updatedAt">Lade...</span>
+    <a href="/static/guide.html" class="btn" style="text-decoration:none">📚 Guide</a>
+    <button class="btn" onclick="refreshAll()">⟳ Refresh</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Coin Cards -->
+  <div class="grid-top" id="coinGrid">
+    <div class="card">Lade Coins...</div>
+  </div>
+
+  <!-- Sentiment + Jobs -->
+  <div class="grid-mid">
+
+    <!-- Sentiment -->
+    <div class="card">
+      <div class="card-title">📊 Markt-Sentiment</div>
+      <div class="sentiment-grid">
+
+        <!-- Fear & Greed -->
+        <div class="sentiment-item">
+          <div class="fg-wrap">
+            <div class="fg-num" id="fgNum">–</div>
+            <div class="fg-lbl" id="fgLbl">Fear & Greed</div>
+            <div class="fg-bar"><div class="fg-needle" id="fgNeedle" style="left:50%"></div></div>
+          </div>
+        </div>
+
+        <!-- BTC Dominanz -->
+        <div class="sentiment-item">
+          <div class="sentiment-val blue" id="btcDom">–%</div>
+          <div class="sentiment-lbl">BTC Dominanz</div>
+          <div style="margin-top:10px;font-size:11px;color:var(--muted)">
+            Hoch → Altcoins schwach<br>Niedrig → Altcoin-Season
+          </div>
+        </div>
+
+        <!-- LS Ratio BTC -->
+        <div class="sentiment-item">
+          <div class="sentiment-val" id="lsRatioVal">–</div>
+          <div class="sentiment-lbl">BTC Longs %</div>
+          <div style="margin-top:8px;height:6px;border-radius:3px;background:var(--border);overflow:hidden">
+            <div id="lsBar" style="height:100%;background:var(--green);border-radius:3px;width:50%;transition:width .8s"></div>
+          </div>
+          <div style="margin-top:4px;font-size:10px;color:var(--muted)" id="lsDetail">–</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Job Controls -->
+    <div class="card jobs-panel">
+      <div class="card-title">⚙️ Analyse-Jobs</div>
+
+      <div class="job-row">
+        <div class="job-info">
+          <div class="job-name">📊 BTC Chart-Analyse</div>
+          <div class="job-meta">EMA, RSI, MACD, BB, Volumen</div>
+          <div class="job-status" id="analyseStatus">–</div>
+        </div>
+        <button class="btn btn-green" id="btnAnalyse" onclick="runJob('analyse')">▶ Start</button>
+      </div>
+
+      <div class="job-row">
+        <div class="job-info">
+          <div class="job-name">📈 Liquidation & Sentiment</div>
+          <div class="job-meta">OI, Long/Short, Funding, Liq-Zonen</div>
+          <div class="job-status" id="sentimentStatus">–</div>
+        </div>
+        <button class="btn btn-orange" id="btnSentiment" onclick="runJob('sentiment')">▶ Start</button>
+      </div>
+
+      <button class="btn btn-full" onclick="runFull()">⚡ Beide Jobs ausführen</button>
+
+      <div class="log-box" id="logBox">Bereit. Starte einen Job...</div>
+    </div>
+  </div>
+
+  <!-- OI + Funding Charts -->
+  <div class="grid-mid">
+    <div class="card">
+      <div class="card-title">📦 Open Interest BTC (24h)</div>
+      <div class="chart-wrap"><canvas id="oiChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">💸 Funding Rate + Long/Short (24h)</div>
+      <div class="chart-wrap"><canvas id="frChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Generated Charts -->
+  <div class="grid-charts">
+    <div class="card">
+      <div class="card-title">
+        🕯️ BTC Chart (4h)
+        <button class="btn" style="font-size:11px;padding:4px 10px" onclick="reloadCharts()">⟳</button>
+      </div>
+      <div class="chart-img-wrap">
+        <img id="btcChartImg" class="chart-img" src="/charts/btc_chart.png" alt="BTC Chart"
+             onclick="openLightbox(this.src)" onerror="this.style.opacity='.3';this.alt='Noch nicht verfügbar — Job starten'">
+        <div class="chart-ts" id="btcChartTs"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">
+        📈 Liquidation & Sentiment Chart
+        <button class="btn" style="font-size:11px;padding:4px 10px" onclick="reloadCharts()">⟳</button>
+      </div>
+      <div class="chart-img-wrap">
+        <img id="liqChartImg" class="chart-img" src="/charts/liq_chart.png" alt="Liquidation Chart"
+             onclick="openLightbox(this.src)" onerror="this.style.opacity='.3';this.alt='Noch nicht verfügbar — Job starten'">
+        <div class="chart-ts" id="liqChartTs"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Lightbox -->
+<div id="lightbox" onclick="closeLightbox()">
+  <img id="lightboxImg" src="" alt="">
+</div>
+
+<script>
+// ── WebSocket ──────────────────────────────────────────────────────────────
+let ws;
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ws`);
+  ws.onopen    = () => { document.getElementById('wsDot').style.background = 'var(--green)'; };
+  ws.onclose   = () => { document.getElementById('wsDot').style.background = 'var(--red)';
+                          setTimeout(connectWS, 3000); };
+  ws.onerror   = () => { ws.close(); };
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'market_update') renderMarket(msg.data);
+    if (msg.type === 'job_start')     onJobStart(msg.job);
+    if (msg.type === 'job_done')      onJobDone(msg.job, msg.status, msg.log);
+  };
+}
+connectWS();
+
+// ── Chart.js defaults ─────────────────────────────────────────────────────
+Chart.defaults.color = '#8b949e';
+Chart.defaults.borderColor = '#21262d';
+Chart.defaults.font.family = 'Segoe UI, system-ui, sans-serif';
+
+let oiChart, frChart;
+
+function makeOiChart(labels, values) {
+  const ctx = document.getElementById('oiChart').getContext('2d');
+  if (oiChart) oiChart.destroy();
+  const colors = values.map((v, i) => i === 0 ? '#58a6ff' : v >= values[i-1] ? '#3fb950' : '#f85149');
+  oiChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: colors,
+        borderRadius: 3,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { maxTicksLimit: 8, font: { size: 10 } } },
+        y: { ticks: { callback: v => `$${v.toFixed(1)}B`, font: { size: 10 } }, position: 'right' }
+      }
+    }
+  });
+}
+
+function makeFrChart(frLabels, frValues, lsValues) {
+  const ctx = document.getElementById('frChart').getContext('2d');
+  if (frChart) frChart.destroy();
+  const frColors = frValues.map(v => v >= 0 ? 'rgba(63,185,80,.7)' : 'rgba(248,81,73,.7)');
+  frChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: frLabels,
+      datasets: [
+        {
+          label: 'Funding Rate %',
+          data: frValues,
+          backgroundColor: frColors,
+          borderRadius: 2,
+          yAxisID: 'yFr',
+        },
+        {
+          label: 'Longs %',
+          data: lsValues,
+          type: 'line',
+          borderColor: '#58a6ff',
+          backgroundColor: 'rgba(88,166,255,.1)',
+          borderWidth: 2,
+          pointRadius: 0,
+          fill: true,
+          tension: 0.3,
+          yAxisID: 'yLs',
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, labels: { font: { size: 10 }, boxWidth: 12 } } },
+      scales: {
+        x: { ticks: { maxTicksLimit: 8, font: { size: 10 } } },
+        yFr: { position: 'left',  ticks: { callback: v => `${v.toFixed(3)}%`, font: { size: 10 } } },
+        yLs: { position: 'right', min: 30, max: 70,
+               ticks: { callback: v => `${v}%`, font: { size: 10 } },
+               grid: { drawOnChartArea: false } },
+      }
+    }
+  });
+}
+
+// ── Render Market Data ─────────────────────────────────────────────────────
+function renderMarket(d) {
+  // Coins
+  const grid = document.getElementById('coinGrid');
+  grid.innerHTML = '';
+  for (const c of d.coins) {
+    if (c.error) { grid.innerHTML += `<div class="card coin-card"><b class="red">${c.symbol}</b><br><span class="muted">${c.error}</span></div>`; continue; }
+    const chg      = c.change;
+    const chgCls   = chg >= 0 ? 'green' : 'red';
+    const chgStr   = (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%';
+    const price    = c.price >= 1000 ? '$' + c.price.toLocaleString('de-DE', {maximumFractionDigits:0})
+                   : c.price >= 1    ? '$' + c.price.toFixed(2)
+                   :                   '$' + c.price.toFixed(4);
+    const frCls    = c.funding > 0.05 ? 'red' : c.funding < -0.05 ? 'green' : 'muted';
+    const frWidth  = Math.min(100, Math.abs(c.funding) / 0.2 * 100);
+    const frColor  = c.funding >= 0 ? 'var(--green)' : 'var(--red)';
+    const lsStr    = c.longs ? `${c.longs}% L` : '–';
+    grid.innerHTML += `
+      <div class="card coin-card">
+        <div class="coin-symbol muted">${c.symbol}/USDT</div>
+        <div class="coin-price">${price}</div>
+        <div class="coin-change ${chgCls}">${chgStr} 24h</div>
+        <div class="coin-meta">
+          <span>Vol: <b>$${c.vol24h}B</b></span>
+          <span>OI: <b>$${c.oi}B</b></span>
+          <span class="${frCls}">Funding: <b>${c.funding > 0 ? '+' : ''}${c.funding.toFixed(4)}%</b></span>
+          <span>L/S: <b>${lsStr}</b></span>
+        </div>
+        <div class="funding-bar"><div class="funding-fill" style="width:${frWidth}%;background:${frColor}"></div></div>
+      </div>`;
+  }
+
+  // Fear & Greed
+  if (d.fear_greed) {
+    const v = d.fear_greed.value;
+    const cls = v <= 25 ? 'red' : v <= 45 ? 'orange' : v <= 55 ? '' : v <= 75 ? 'green' : 'green';
+    document.getElementById('fgNum').textContent = v;
+    document.getElementById('fgNum').className = `fg-num ${cls}`;
+    document.getElementById('fgLbl').textContent = d.fear_greed.label;
+    document.getElementById('fgNeedle').style.left = v + '%';
+  }
+
+  // BTC Dom
+  if (d.btc_dom) document.getElementById('btcDom').textContent = d.btc_dom + '%';
+
+  // BTC Long/Short
+  const btc = d.coins.find(c => c.symbol === 'BTC');
+  if (btc && btc.longs) {
+    const l = btc.longs;
+    const cls = l > 60 ? 'red' : l < 40 ? 'green' : '';
+    document.getElementById('lsRatioVal').textContent = l.toFixed(1) + '%';
+    document.getElementById('lsRatioVal').className = `sentiment-val ${cls}`;
+    document.getElementById('lsBar').style.width = l + '%';
+    document.getElementById('lsDetail').textContent = `${l.toFixed(1)}% Long / ${(100-l).toFixed(1)}% Short`;
+  }
+
+  // OI Chart
+  if (d.oi_hist && d.oi_hist.length) {
+    const labels = d.oi_hist.map(x => {
+      const dt = new Date(x.t);
+      return dt.getHours().toString().padStart(2,'0') + ':00';
+    });
+    makeOiChart(labels, d.oi_hist.map(x => x.v));
+  }
+
+  // Funding + LS Chart
+  if (d.fr_hist && d.ls_hist && d.fr_hist.length && d.ls_hist.length) {
+    // Auf gleiche Länge bringen
+    const len = Math.min(d.fr_hist.length, d.ls_hist.length);
+    const frSlice = d.fr_hist.slice(-len);
+    const lsSlice = d.ls_hist.slice(-len);
+    const labels = frSlice.map(x => {
+      const dt = new Date(x.t);
+      return dt.getHours().toString().padStart(2,'0') + ':00';
+    });
+    makeFrChart(labels, frSlice.map(x => x.v), lsSlice.map(x => x.l));
+  }
+
+  document.getElementById('updatedAt').textContent = 'Aktualisiert: ' + d.updated;
+}
+
+// ── Jobs ───────────────────────────────────────────────────────────────────
+function onJobStart(job) {
+  const btn = document.getElementById(job === 'analyse' ? 'btnAnalyse' : 'btnSentiment');
+  if (btn) { btn.disabled = true; btn.textContent = '⟳'; }
+  log(`<span class="log-running">⟳ ${job} läuft...</span>`);
+}
+
+function onJobDone(job, status, lines) {
+  const btn = document.getElementById(job === 'analyse' ? 'btnAnalyse' : 'btnSentiment');
+  const el  = document.getElementById(job === 'analyse' ? 'analyseStatus' : 'sentimentStatus');
+  if (btn) { btn.disabled = false; btn.textContent = '▶ Start'; }
+  const icon = status === 'ok' ? '✅' : status === 'timeout' ? '⏱️' : '❌';
+  const now  = new Date().toLocaleTimeString('de-DE');
+  if (el) el.innerHTML = `${icon} ${status} — ${now}`;
+  if (lines && lines.length) {
+    lines.forEach(l => log(`<span class="${l.includes('Error') || l.includes('Fehler') ? 'err' : 'ok'}">${escHtml(l)}</span>`));
+  } else {
+    log(`<span class="${status === 'ok' ? 'ok' : 'err'}">${icon} ${job} abgeschlossen (${status})</span>`);
+  }
+  if (status === 'ok') setTimeout(reloadCharts, 2000);
+}
+
+function log(html) {
+  const box = document.getElementById('logBox');
+  box.innerHTML += html + '<br>';
+  box.scrollTop = box.scrollHeight;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function runJob(job) {
+  const res = await fetch(`/api/run/${job}`, { method: 'POST' });
+  const d   = await res.json();
+  if (d.status === 'started') onJobStart(job);
+}
+
+async function runFull() {
+  const res = await fetch('/api/run/full', { method: 'POST' });
+  onJobStart('analyse');
+  setTimeout(() => onJobStart('sentiment'), 500);
+}
+
+// ── Charts Reload ──────────────────────────────────────────────────────────
+function reloadCharts() {
+  const ts = Date.now();
+  const btc = document.getElementById('btcChartImg');
+  const liq = document.getElementById('liqChartImg');
+  btc.src = `/charts/btc_chart.png?t=${ts}`;
+  liq.src = `/charts/liq_chart.png?t=${ts}`;
+  btc.style.opacity = '1';
+  liq.style.opacity = '1';
+  document.getElementById('btcChartTs').textContent = 'Aktualisiert: ' + new Date().toLocaleTimeString('de-DE');
+  document.getElementById('liqChartTs').textContent = 'Aktualisiert: ' + new Date().toLocaleTimeString('de-DE');
+}
+
+// ── Lightbox ───────────────────────────────────────────────────────────────
+function openLightbox(src) {
+  document.getElementById('lightboxImg').src = src + '?t=' + Date.now();
+  document.getElementById('lightbox').classList.add('show');
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('show');
+}
+
+// ── Refresh ────────────────────────────────────────────────────────────────
+async function refreshAll() {
+  document.getElementById('updatedAt').textContent = 'Lädt...';
+  try {
+    const res  = await fetch('/api/market');
+    const data = await res.json();
+    renderMarket(data);
+  } catch(e) {
+    document.getElementById('updatedAt').textContent = 'Fehler beim Laden';
+  }
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+refreshAll();
+setInterval(refreshAll, 60000);
+</script>
+</body>
+</html>

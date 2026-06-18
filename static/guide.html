@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📚 Trading Begriffe — Interpretationshilfe</title>
+<style>
+:root {
+  --bg:     #0d1117;
+  --panel:  #161b22;
+  --panel2: #1c2128;
+  --border: #21262d;
+  --txt:    #e6edf3;
+  --muted:  #8b949e;
+  --green:  #3fb950;
+  --red:    #f85149;
+  --blue:   #58a6ff;
+  --orange: #ffa657;
+  --purple: #d2a8ff;
+  --yellow: #e3b341;
+  --cyan:   #39d353;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--txt); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 15px; line-height: 1.7; }
+
+/* ── Nav ── */
+nav {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 32px;
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+}
+.nav-logo { font-size: 18px; font-weight: 700; }
+.nav-logo span { color: var(--blue); }
+.nav-links { display: flex; gap: 8px; flex-wrap: wrap; }
+.nav-links a {
+  color: var(--muted); text-decoration: none; font-size: 13px;
+  padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border);
+  transition: all .2s;
+}
+.nav-links a:hover { color: var(--txt); border-color: var(--blue); }
+
+/* ── Layout ── */
+.container { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; }
+
+/* ── Hero ── */
+.hero {
+  background: linear-gradient(135deg, #161b22 0%, #0d1117 100%);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 40px;
+  margin-bottom: 48px;
+  text-align: center;
+}
+.hero h1 { font-size: 32px; font-weight: 800; margin-bottom: 12px; }
+.hero h1 span { color: var(--blue); }
+.hero p { color: var(--muted); font-size: 16px; max-width: 600px; margin: 0 auto; }
+
+/* ── Section ── */
+.section { margin-bottom: 56px; }
+.section-header {
+  display: flex; align-items: center; gap: 14px;
+  margin-bottom: 24px;
+  padding-bottom: 14px;
+  border-bottom: 2px solid var(--border);
+}
+.section-icon { font-size: 28px; }
+.section-title { font-size: 22px; font-weight: 700; }
+.section-subtitle { color: var(--muted); font-size: 14px; margin-top: 2px; }
+
+/* ── Cards ── */
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px 24px;
+  margin-bottom: 16px;
+}
+.card-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  margin-bottom: 14px; gap: 16px;
+}
+.card-title { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+.card-desc  { color: var(--muted); font-size: 14px; }
+.badge {
+  font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px;
+  white-space: nowrap; flex-shrink: 0;
+}
+.badge-blue   { background: rgba(88,166,255,.15);  color: var(--blue); }
+.badge-green  { background: rgba(63,185,80,.15);   color: var(--green); }
+.badge-red    { background: rgba(248,81,73,.15);   color: var(--red); }
+.badge-orange { background: rgba(255,166,87,.15);  color: var(--orange); }
+
+/* ── Signal Tables ── */
+.signal-table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 13px; }
+.signal-table th {
+  text-align: left; padding: 8px 12px; font-size: 11px; text-transform: uppercase;
+  letter-spacing: .8px; color: var(--muted); background: var(--panel2);
+  border-bottom: 1px solid var(--border);
+}
+.signal-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.signal-table tr:last-child td { border-bottom: none; }
+.signal-table tr:hover td { background: rgba(255,255,255,.02); }
+
+/* ── Examples ── */
+.example-box {
+  background: var(--panel2);
+  border-left: 3px solid var(--blue);
+  border-radius: 0 8px 8px 0;
+  padding: 14px 18px;
+  margin-top: 14px;
+  font-size: 13px;
+}
+.example-box.green { border-left-color: var(--green); }
+.example-box.red   { border-left-color: var(--red); }
+.example-box.orange{ border-left-color: var(--orange); }
+.example-title { font-weight: 700; margin-bottom: 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+
+/* ── Visual Indicators ── */
+.gauge-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+.gauge-item {
+  flex: 1; min-width: 140px;
+  background: var(--panel2); border-radius: 8px;
+  padding: 14px; text-align: center;
+}
+.gauge-val  { font-size: 26px; font-weight: 800; margin-bottom: 4px; }
+.gauge-lbl  { font-size: 11px; color: var(--muted); }
+.gauge-bar  { height: 6px; border-radius: 3px; background: var(--border); margin-top: 10px; overflow: hidden; }
+.gauge-fill { height: 100%; border-radius: 3px; }
+
+/* ── RSI Visual ── */
+.rsi-bar {
+  position: relative; height: 36px; border-radius: 8px;
+  background: linear-gradient(to right, var(--green) 0%, var(--green) 30%, var(--yellow) 30%, var(--yellow) 45%, #555 45%, #555 55%, var(--yellow) 55%, var(--yellow) 70%, var(--red) 70%);
+  margin: 14px 0; font-size: 11px; display: flex;
+}
+.rsi-zone { flex: 1; display: flex; align-items: center; justify-content: center; color: rgba(0,0,0,.8); font-weight: 700; font-size: 11px; }
+.rsi-needle {
+  position: absolute; top: -6px; width: 3px; height: 48px;
+  background: white; border-radius: 2px; transform: translateX(-50%);
+  box-shadow: 0 0 6px rgba(255,255,255,.5);
+}
+.rsi-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+
+/* ── Candlestick Mini ── */
+.candle-demo { display: flex; gap: 6px; align-items: flex-end; padding: 16px; background: var(--panel2); border-radius: 8px; margin-top: 14px; height: 100px; }
+.candle { display: flex; flex-direction: column; align-items: center; flex: 1; height: 100%; justify-content: center; }
+.wick { width: 2px; border-radius: 1px; }
+.body { width: 12px; border-radius: 2px; }
+
+/* ── Scenario Cards ── */
+.scenario-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+.scenario {
+  background: var(--panel2); border-radius: 10px; padding: 16px;
+  border-top: 3px solid transparent;
+}
+.scenario.bull { border-top-color: var(--green); }
+.scenario.bear { border-top-color: var(--red); }
+.scenario.warn { border-top-color: var(--orange); }
+.scenario.neut { border-top-color: var(--muted); }
+.scenario-title { font-weight: 700; font-size: 14px; margin-bottom: 8px; }
+.scenario ul { padding-left: 18px; font-size: 13px; color: var(--muted); }
+.scenario ul li { margin-bottom: 4px; }
+.scenario ul li b { color: var(--txt); }
+
+/* ── Flow Diagram ── */
+.flow { display: flex; align-items: center; gap: 0; flex-wrap: wrap; margin: 14px 0; }
+.flow-box {
+  background: var(--panel2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 14px; font-size: 12px; text-align: center;
+}
+.flow-arrow { color: var(--muted); font-size: 18px; padding: 0 6px; }
+
+/* ── Score Bar ── */
+.score-demo { margin-top: 14px; }
+.score-item { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 13px; }
+.score-label { width: 160px; flex-shrink: 0; color: var(--muted); }
+.score-bar-wrap { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.score-bar-fill { height: 100%; border-radius: 4px; }
+.score-pts { width: 40px; text-align: right; font-weight: 700; font-size: 12px; }
+
+/* ── Misc ── */
+.tip {
+  background: rgba(88,166,255,.08); border: 1px solid rgba(88,166,255,.2);
+  border-radius: 8px; padding: 12px 16px; font-size: 13px; margin-top: 14px;
+}
+.tip::before { content: '💡 '; font-weight: 700; }
+.warn-box {
+  background: rgba(255,166,87,.08); border: 1px solid rgba(255,166,87,.2);
+  border-radius: 8px; padding: 12px 16px; font-size: 13px; margin-top: 14px;
+}
+.warn-box::before { content: '⚠️ '; }
+.green  { color: var(--green); }
+.red    { color: var(--red); }
+.blue   { color: var(--blue); }
+.orange { color: var(--orange); }
+.purple { color: var(--purple); }
+.yellow { color: var(--yellow); }
+.muted  { color: var(--muted); }
+.bold   { font-weight: 700; }
+hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+@media (max-width: 600px) {
+  .scenario-grid { grid-template-columns: 1fr; }
+  .hero h1 { font-size: 24px; }
+  .gauge-item { min-width: 100px; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">📚 <span>Trading</span> Guide</div>
+  <div class="nav-links">
+    <a href="#signale">Signale</a>
+    <a href="#rsi">RSI</a>
+    <a href="#macd">MACD</a>
+    <a href="#ema">EMA</a>
+    <a href="#bb">Bollinger</a>
+    <a href="#oi">Open Interest</a>
+    <a href="#funding">Funding</a>
+    <a href="#ls">Long/Short</a>
+    <a href="#fg">Fear&Greed</a>
+    <a href="#szenarien">Szenarien</a>
+    <a href="/">← Dashboard</a>
+  </div>
+</nav>
+
+<div class="container">
+
+<div class="hero">
+  <h1>📚 Crypto Trading<br><span>Interpretationshilfe</span></h1>
+  <p>Alle Indikatoren des Dashboards erklärt — mit konkreten Beispielen, was welcher Wert bedeutet und wie du ihn richtig liest.</p>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SIGNALE -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section" id="signale">
+  <div class="section-header">
+    <div class="section-icon">🎯</div>
+    <div>
+      <div class="section-title">Signal & Score System</div>
+      <div class="section-subtitle">Wie das Dashboard zu LONG / SHORT / NEUTRAL kommt</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Wie wird der Score berechnet?</div>
+        <div class="card-desc">Jeder Indikator gibt Plus- oder Minuspunkte. Am Ende entscheidet die Summe.</div>
+      </div>
+    </div>
+    <div class="score-demo">
+      <div class="score-item">
+        <div class="score-label">EMA 200 (Trend)</div>
+        <div class="score-bar-wrap"><div class="score-bar-fill" style="width:100%;background:var(--green)"></div></div>
+        <div class="score-pts green">±3 Pkt</div>
+      </div>
+      <div class="score-item">
+        <div class="score-label">EMA 20/50 Kreuzung</div>
+        <div class="score-bar-wrap"><div class="score-bar-fill" style="width:67%;background:var(--blue)"></div></div>
+        <div class="score-pts blue">±2 Pkt</div>
+      </div>
+      <div class="score-item">
+        <div class="score-label">MACD</div>
+        <div class="score-bar-wrap"><div class="score-bar-fill" style="width:67%;background:var(--blue)"></div></div>
+        <div class="score-pts blue">±2 Pkt</div>
+      </div>
+      <div class="score-item">
+        <div class="score-label">RSI (Wilder)</div>
+        <div class="score-bar-wrap"><div class="score-bar-fill" style="width:67%;background:var(--purple)"></div></div>
+        <div class="score-pts purple">±2 Pkt</div>
+      </div>
+      <div class="score-item">
+        <div class="score-label">Bollinger Bands</div>
+        <div class="score-bar-wrap"><div class="score-bar-fill" style="width:67%;background:var(--purple)"></div></div>
+        <div class="score-pts purple">±2 Pkt</div>
+      </div>
+      <div class="score-item">
+        <div class="score-label">Funding Rate</div>
+        <div class="score-bar-wrap"><div class="score-bar-fill" style="width:67%;background:var(--orange)"></div></div>
+        <div class="score-pts orange">±2 Pkt</div>
+      </div>
+      <div class="score-item">
+        <div class="score-label">Volumen-Spike</div>
+        <div class="score-bar-wrap"><div class="score-bar-fill" style="width:33%;background:var(--yellow)"></div></div>
+        <div class="score-pts yellow">±1 Pkt</div>
+      </div>
+      <div class="score-item">
+        <div class="score-label">MTF Konfluenz (1h+4h)</div>
+        <div class="score-bar-wrap"><div class="score-bar-fill" style="width:33%;background:var(--yellow)"></div></div>
+        <div class="score-pts yellow">±1 Pkt</div>
+      </div>
+    </div>
+    <table class="signal-table" style="margin-top:20px">
+      <tr>
+        <th>Signal</th><th>Score</th><th>Bedeutung</th><th>Was tun?</th>
+      </tr>
+      <tr>
+        <td><span class="green bold">🟢 LONG</span></td>
+        <td><span class="green">≥ +5</span></td>
+        <td>Stark bullisch — die meisten Indikatoren zeigen nach oben</td>
+        <td>Mögliche Einstiegszone für Long-Positionen</td>
+      </tr>
+      <tr>
+        <td><span class="yellow bold">🟡 LONG-BIAS</span></td>
+        <td><span class="yellow">+3 bis +4</span></td>
+        <td>Leicht bullisch — Mehrheit der Signale positiv</td>
+        <td>Beobachten, auf Bestätigung warten</td>
+      </tr>
+      <tr>
+        <td><span class="muted bold">⚪ NEUTRAL</span></td>
+        <td><span class="muted">-2 bis +2</span></td>
+        <td>Unentschieden — keine klare Richtung</td>
+        <td>Abwarten, kein klares Setup</td>
+      </tr>
+      <tr>
+        <td><span class="orange bold">🟡 SHORT-BIAS</span></td>
+        <td><span class="orange">-3 bis -4</span></td>
+        <td>Leicht bärisch — Mehrheit der Signale negativ</td>
+        <td>Vorsicht, möglicher Rücksetzer</td>
+      </tr>
+      <tr>
+        <td><span class="red bold">🔴 SHORT</span></td>
+        <td><span class="red">≤ -5</span></td>
+        <td>Stark bärisch — die meisten Indikatoren zeigen nach unten</td>
+        <td>Mögliche Einstiegszone für Short-Positionen</td>
+      </tr>
+    </table>
+    <div class="tip">
+      <b>Konfidenz %</b> zeigt wie eindeutig das Signal ist. 80%+ Konfidenz = sehr klares Bild. 30% = uneinheitliche Signale, lieber abwarten.
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- RSI -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section" id="rsi">
+  <div class="section-header">
+    <div class="section-icon">📏</div>
+    <div>
+      <div class="section-title">RSI — Relative Strength Index</div>
+      <div class="section-subtitle">Misst wie "erschöpft" eine Bewegung ist (0–100)</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Was ist der RSI?</div>
+        <div class="card-desc">Der RSI vergleicht Gewinntage mit Verlusttagen der letzten 14 Kerzen. Er zeigt ob ein Asset zu stark gestiegen (überkauft) oder gefallen (überverkauft) ist.</div>
+      </div>
+      <div class="badge badge-blue">Wilder's RSI</div>
+    </div>
+
+    <div class="rsi-labels">
+      <span>0</span><span>30</span><span>50</span><span>70</span><span>100</span>
+    </div>
+    <div class="rsi-bar">
+      <div class="rsi-zone" style="background:rgba(63,185,80,.7);flex:3">Überverkauft</div>
+      <div class="rsi-zone" style="background:rgba(63,185,80,.3);flex:1.5"></div>
+      <div class="rsi-zone" style="background:rgba(100,100,100,.4);flex:1">Neutral</div>
+      <div class="rsi-zone" style="background:rgba(248,81,73,.3);flex:1.5"></div>
+      <div class="rsi-zone" style="background:rgba(248,81,73,.7);flex:3">Überkauft</div>
+    </div>
+
+    <table class="signal-table">
+      <tr><th>RSI Wert</th><th>Zone</th><th>Bedeutung</th><th>Dashboard-Signal</th></tr>
+      <tr>
+        <td><span class="green bold">0–30</span></td>
+        <td><span class="green">Überverkauft 🟢</span></td>
+        <td>Markt ist "ausgeblutet", Erholung wahrscheinlich</td>
+        <td>+2 Punkte (Kaufzone)</td>
+      </tr>
+      <tr>
+        <td><span class="green">31–45</span></td>
+        <td><span class="green">Leicht bullisch</span></td>
+        <td>Noch Platz nach oben, Aufwärtsmomentum möglich</td>
+        <td>+1 Punkt</td>
+      </tr>
+      <tr>
+        <td><span class="muted">46–54</span></td>
+        <td><span class="muted">Neutral ⚪</span></td>
+        <td>Keine klare Erschöpfung, Markt in Balance</td>
+        <td>0 Punkte</td>
+      </tr>
+      <tr>
+        <td><span class="orange">55–65</span></td>
+        <td><span class="orange">Leicht bärisch</span></td>
+        <td>Momentum nachlassend, Vorsicht bei Longs</td>
+        <td>-1 Punkt</td>
+      </tr>
+      <tr>
+        <td><span class="red bold">66–100</span></td>
+        <td><span class="red">Überkauft 🔴</span></td>
+        <td>Markt überhitzt, Korrektur wahrscheinlich</td>
+        <td>-2 Punkte (Vorsicht!)</td>
+      </tr>
+    </table>
+
+    <div class="example-box green">
+      <div class="example-title">✅ Beispiel Bullisch</div>
+      BTC fällt 3 Tage lang stark. RSI erreicht <b class="green">28</b> (überverkauft). 
+      → Viele Trader sehen das als Kaufgelegenheit → Preis erholt sich oft danach.
+    </div>
+    <div class="example-box red">
+      <div class="example-title">🔴 Beispiel Bärisch</div>
+      BTC pumpt stark, RSI klettert auf <b class="red">82</b> (überkauft).
+      → Kaum noch neue Käufer → Preis läuft sich "heiß" → Rücksetzer wahrscheinlich.
+    </div>
+    <div class="tip">
+      <b>RSI-Divergenz:</b> Preis macht neues Hoch, RSI aber nicht → Das ist ein starkes Warnsignal! (Bärische Divergenz). Funktioniert auch umgekehrt.
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- MACD -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section" id="macd">
+  <div class="section-header">
+    <div class="section-icon">📉</div>
+    <div>
+      <div class="section-title">MACD — Moving Average Convergence Divergence</div>
+      <div class="section-subtitle">Misst Momentum und Trendstärke</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Was ist der MACD?</div>
+        <div class="card-desc">Der MACD berechnet die Differenz zweier gleitender Durchschnitte (EMA 12 minus EMA 26) und zeigt eine Signal-Linie (EMA 9 des MACD). Das Histogramm ist der Abstand zwischen beiden.</div>
+      </div>
+      <div class="badge badge-blue">Momentum</div>
+    </div>
+
+    <table class="signal-table">
+      <tr><th>Was du siehst</th><th>Bedeutung</th><th>Signal</th></tr>
+      <tr>
+        <td><span class="green">MACD über Signal-Linie</span></td>
+        <td>Aufwärtsmomentum — Kaufdruck überwiegt</td>
+        <td><span class="green">+2 Punkte ✅</span></td>
+      </tr>
+      <tr>
+        <td><span class="red">MACD unter Signal-Linie</span></td>
+        <td>Abwärtsmomentum — Verkaufsdruck überwiegt</td>
+        <td><span class="red">-2 Punkte ❌</span></td>
+      </tr>
+      <tr>
+        <td><span class="green">Histogramm grün & wächst</span></td>
+        <td>Momentum verstärkt sich nach oben</td>
+        <td>Bullisch 🚀</td>
+      </tr>
+      <tr>
+        <td><span class="orange">Histogramm grün, aber schrumpft</span></td>
+        <td>Aufwärtsbewegung verliert Kraft</td>
+        <td>Vorsicht ⚠️</td>
+      </tr>
+      <tr>
+        <td><span class="green bold">Golden Cross (MACD kreuzt Signal von unten)</span></td>
+        <td>Starkes Kaufsignal</td>
+        <td><span class="green">Starker Einstieg</span></td>
+      </tr>
+      <tr>
+        <td><span class="red bold">Death Cross (MACD kreuzt Signal von oben)</span></td>
+        <td>Starkes Verkaufssignal</td>
+        <td><span class="red">Starker Ausstieg</span></td>
+      </tr>
+    </table>
+
+    <div class="example-box green">
+      <div class="example-title">✅ Bullisches Setup</div>
+      MACD: <b>250</b> | Signal: <b>180</b> → MACD &gt; Signal ✅<br>
+      Histogramm wächst von 40 → 70 → Momentum verstärkt sich 🚀
+    </div>
+    <div class="example-box red">
+      <div class="example-title">🔴 Bärisches Setup</div>
+      MACD: <b>-150</b> | Signal: <b>-80</b> → MACD &lt; Signal ❌<br>
+      Histogramm: -70 und wird größer → Abwärtsdruck nimmt zu 📉
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- EMA -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section" id="ema">
+  <div class="section-header">
+    <div class="section-icon">📊</div>
+    <div>
+      <div class="section-title">EMA — Exponential Moving Average</div>
+      <div class="section-subtitle">Gleitende Durchschnitte zeigen den Trend</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">EMA 20 / 50 / 200 — Was ist der Unterschied?</div>
+        <div class="card-desc">Ein EMA berechnet den Durchschnittspreis der letzten N Kerzen, wobei neuere Kerzen mehr Gewicht bekommen.</div>
+      </div>
+      <div class="badge badge-orange">Trend</div>
+    </div>
+
+    <table class="signal-table">
+      <tr><th>EMA</th><th>Zeitraum (4h)</th><th>Bedeutung</th><th>Im Chart</th></tr>
+      <tr>
+        <td><span class="orange bold">EMA 20</span></td>
+        <td>80 Stunden (~3 Tage)</td>
+        <td>Kurzfristiger Trend</td>
+        <td><span class="orange">── Orange</span></td>
+      </tr>
+      <tr>
+        <td><span class="purple bold">EMA 50</span></td>
+        <td>200 Stunden (~8 Tage)</td>
+        <td>Mittelfristiger Trend</td>
+        <td><span class="purple">── Lila</span></td>
+      </tr>
+      <tr>
+        <td><span style="color:#c9d1d9" class="bold">EMA 200</span></td>
+        <td>800 Stunden (~33 Tage)</td>
+        <td>Primärer Langfrist-Trend — wichtigster!</td>
+        <td><span style="color:#c9d1d9">─── Weißgrau (dick)</span></td>
+      </tr>
+    </table>
+
+    <div style="margin-top:16px">
+      <div style="font-weight:700;margin-bottom:10px">Wie liest man EMA-Kreuzungen?</div>
+      <div class="flow">
+        <div class="flow-box" style="border-color:var(--green)">EMA 20 kreuzt<br>EMA 50 <b class="green">von unten</b></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box" style="border-color:var(--green)"><b class="green">Golden Cross</b><br>Bullisches Signal</div>
+        <div class="flow-arrow" style="padding:0 20px">|</div>
+        <div class="flow-box" style="border-color:var(--red)">EMA 20 kreuzt<br>EMA 50 <b class="red">von oben</b></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box" style="border-color:var(--red)"><b class="red">Death Cross</b><br>Bärisches Signal</div>
+      </div>
+    </div>
+
+    <div class="example-box green">
+      <div class="example-title">✅ Beispiel: Aufwärtstrend</div>
+      BTC Preis: <b>$67.000</b> | EMA 200: <b>$63.000</b><br>
+      → Preis liegt <b class="green">+6.3% über EMA 200</b> → Dashboard: +3 Punkte, Aufwärtstrend bestätigt ✅<br>
+      Zusätzlich EMA 20 ($66.500) &gt; EMA 50 ($64.000) → nochmal +2 Punkte
+    </div>
+    <div class="example-box red">
+      <div class="example-title">🔴 Beispiel: Abwärtstrend</div>
+      BTC Preis: <b>$58.000</b> | EMA 200: <b>$63.000</b><br>
+      → Preis liegt <b class="red">-7.9% unter EMA 200</b> → Dashboard: -3 Punkte, Abwärtstrend ❌<br>
+      Selbst wenn MACD und RSI bullisch zeigen, dominiert EMA 200 das Gesamtbild.
+    </div>
+    <div class="tip">
+      <b>EMA 200 ist der wichtigste Indikator im Dashboard</b> (±3 Punkte). Solange der Preis darunter liegt, ist jede Rally nur eine Erholung im Abwärtstrend.
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- BOLLINGER BANDS -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section" id="bb">
+  <div class="section-header">
+    <div class="section-icon">🎯</div>
+    <div>
+      <div class="section-title">Bollinger Bands</div>
+      <div class="section-subtitle">Zeigen ob ein Preis "zu weit" vom Durchschnitt entfernt ist</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Was sind Bollinger Bands?</div>
+        <div class="card-desc">Drei Linien: Mittellinie (EMA 20) + oberes Band (EMA 20 + 2× Standardabweichung) + unteres Band (EMA 20 − 2× Standardabweichung). 95% der Preise liegen darin.</div>
+      </div>
+      <div class="badge badge-blue">Volatilität</div>
+    </div>
+
+    <table class="signal-table">
+      <tr><th>Preis-Position</th><th>Bedeutung</th><th>Mit Volumen</th><th>Ohne Volumen</th></tr>
+      <tr>
+        <td><span class="green">Unter unterem Band 🟢</span></td>
+        <td>Preis statistisch überverkauft</td>
+        <td><span class="green">+2 Punkte — starkes Kaufsignal</span></td>
+        <td><span class="yellow">+1 Punkt — schwaches Signal</span></td>
+      </tr>
+      <tr>
+        <td><span class="muted">Im Band ⚪</span></td>
+        <td>Normale Preisbewegung</td>
+        <td colspan="2"><span class="muted">0 Punkte — neutral</span></td>
+      </tr>
+      <tr>
+        <td><span class="red">Über oberem Band 🔴</span></td>
+        <td>Preis statistisch überkauft</td>
+        <td><span class="red">-2 Punkte — starkes Verkaufssignal</span></td>
+        <td><span class="yellow">-1 Punkt — schwaches Signal</span></td>
+      </tr>
+    </table>
+
+    <div class="example-box green">
+      <div class="example-title">✅ Kaufzone mit Bestätigung</div>
+      BTC fällt stark. Preis: <b>$60.000</b>, unteres Bollinger Band: <b>$60.800</b><br>
+      → Preis <b>unter</b> dem Band + Volumen-Spike 🔥 → +2 Punkte → starkes Kaufsignal
+    </div>
+    <div class="example-box red">
+      <div class="example-title">🔴 Überkauft mit Volumen</div>
+      BTC pumpt. Preis: <b>$72.000</b>, oberes Bollinger Band: <b>$71.200</b><br>
+      → Preis <b>über</b> dem Band + Volumen 🔥 → -2 Punkte → Verkaufsdruck erwartet
+    </div>
+    <div class="tip">
+      <b>BB Squeeze:</b> Wenn die Bänder sehr eng zusammenkommen (niedriges Volumen, konsolidiert) → explosiver Ausbruch steht oft bevor. Richtung noch unbekannt!
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- OPEN INTEREST -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section" id="oi">
+  <div class="section-header">
+    <div class="section-icon">📦</div>
+    <div>
+      <div class="section-title">Open Interest (OI)</div>
+      <div class="section-subtitle">Wie viel Geld steckt in offenen Futures-Positionen?</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Was ist Open Interest?</div>
+        <div class="card-desc">Open Interest = Gesamtwert aller offenen Futures-Kontrakte (in Mrd. $). Steigt OI, werden neue Positionen eröffnet. Fällt OI, werden Positionen geschlossen oder liquidiert.</div>
+      </div>
+      <div class="badge badge-orange">Futures</div>
+    </div>
+
+    <div class="scenario-grid">
+      <div class="scenario bull">
+        <div class="scenario-title green">📈 OI steigt + Preis steigt</div>
+        <ul>
+          <li><b>Neue Longs</b> werden eröffnet</li>
+          <li>Echter Kaufdruck, nachhaltiger Trend</li>
+          <li>Starkes bullisches Signal ✅</li>
+        </ul>
+      </div>
+      <div class="scenario warn">
+        <div class="scenario-title orange">⚠️ OI steigt + Preis fällt</div>
+        <ul>
+          <li><b>Neue Shorts</b> werden aufgebaut</li>
+          <li>Bärischer Druck nimmt zu</li>
+          <li>Achtung, mögliche Beschleunigung nach unten</li>
+        </ul>
+      </div>
+      <div class="scenario warn">
+        <div class="scenario-title orange">⚠️ OI fällt + Preis steigt</div>
+        <ul>
+          <li><b>Shorts werden liquidiert</b> (Short-Squeeze)</li>
+          <li>Bewegung oft nicht nachhaltig</li>
+          <li>Kein echter Kaufdruck, sondern Zwangsliquidation</li>
+        </ul>
+      </div>
+      <div class="scenario bear">
+        <div class="scenario-title red">📉 OI fällt + Preis fällt</div>
+        <ul>
+          <li><b>Longs werden liquidiert</b></li>
+          <li>Kapitulation, Markt will raus</li>
+          <li>Kann Bodenbildung einleiten</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="example-box green">
+      <div class="example-title">✅ Konkretes Beispiel</div>
+      BTC OI: Montag <b>$6.2B</b> → Freitag <b>$7.8B</b> (+25%), Preis: +15%<br>
+      → Neue Longs werden massiv aufgebaut → nachhaltige Rally, nicht nur Short-Squeeze
+    </div>
+    <div class="tip">
+      BTC OI liegt typisch zwischen <b>$5B – $15B</b>. Extremwerte über $15B bedeuten viele gehebelte Positionen → erhöhtes Liquidationsrisiko in beide Richtungen.
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- FUNDING RATE -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section" id="funding">
+  <div class="section-header">
+    <div class="section-icon">💸</div>
+    <div>
+      <div class="section-title">Funding Rate</div>
+      <div class="section-subtitle">Wer bezahlt wen — Longs oder Shorts?</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Wie funktioniert die Funding Rate?</div>
+        <div class="card-desc">Bei Perpetual Futures gibt es keine Verfallszeit. Stattdessen zahlen alle 8 Stunden die überwiegende Seite die andere. Das verhindert, dass der Futures-Preis zu weit vom Spot-Preis abweicht.</div>
+      </div>
+      <div class="badge badge-orange">8h Intervall</div>
+    </div>
+
+    <div class="gauge-row">
+      <div class="gauge-item" style="border-top:3px solid var(--red)">
+        <div class="gauge-val red">+0.15%</div>
+        <div class="gauge-lbl">Extrem hoch 🔴🔴</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px">Longs zahlen Shorts<br>→ zu viele Longs</div>
+      </div>
+      <div class="gauge-item" style="border-top:3px solid var(--orange)">
+        <div class="gauge-val orange">+0.05%</div>
+        <div class="gauge-lbl">Erhöht 🔴</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px">Longs leicht überhitzt<br>→ Vorsicht</div>
+      </div>
+      <div class="gauge-item" style="border-top:3px solid var(--muted)">
+        <div class="gauge-val muted">~0.01%</div>
+        <div class="gauge-lbl">Neutral ⚪</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px">Balance zwischen<br>Longs und Shorts</div>
+      </div>
+      <div class="gauge-item" style="border-top:3px solid var(--green)">
+        <div class="gauge-val green">-0.05%</div>
+        <div class="gauge-lbl">Niedrig 🟢</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px">Shorts zahlen Longs<br>→ Short-Squeeze möglich</div>
+      </div>
+      <div class="gauge-item" style="border-top:3px solid var(--cyan)">
+        <div class="gauge-val cyan">-0.10%</div>
+        <div class="gauge-lbl">Extrem niedrig 🟢🟢</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px">Starkes Short-Squeeze<br>Setup!</div>
+      </div>
+    </div>
+
+    <div class="example-box orange">
+      <div class="example-title">⚠️ Konträr-Signal: Funding zu hoch</div>
+      BTC Funding: <b class="red">+0.20%</b> → Jede Long-Position zahlt 0.20% alle 8h = <b>0.60% pro Tag</b><br>
+      → Das sind ~18% im Monat nur an Funding-Kosten!<br>
+      → Viele Longs schließen irgendwann ihre Position → Preis fällt dann schnell (Funding Crash)
+    </div>
+    <div class="example-box green">
+      <div class="example-title">✅ Short-Squeeze Setup</div>
+      BTC Funding: <b class="green">-0.08%</b> → Zu viele Shorts im Markt<br>
+      → Wenn Preis anfängt zu steigen, müssen Shorts zwangsliquidiert werden<br>
+      → Das treibt den Preis <b>explosionsartig</b> nach oben (Short-Squeeze 🚀)
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- LONG/SHORT RATIO -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section" id="ls">
+  <div class="section-header">
+    <div class="section-icon">⚖️</div>
+    <div>
+      <div class="section-title">Long/Short Ratio</div>
+      <div class="section-subtitle">Wer wettet auf steigende — wer auf fallende Kurse?</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Global vs. Top Trader</div>
+        <div class="card-desc">Das Dashboard zeigt zwei Ratios: <b>Global</b> (alle Binance-Trader) und <b>Top Trader</b> (große Adressen/Wale). Top Trader sind oft relevanter, da sie professioneller handeln.</div>
+      </div>
+      <div class="badge badge-blue">Konträr-Indikator</div>
+    </div>
+
+    <table class="signal-table">
+      <tr><th>Longs %</th><th>Situation</th><th>Interpretation</th><th>Was passiert oft?</th></tr>
+      <tr>
+        <td><span class="red bold">&gt;65%</span></td>
+        <td><span class="red">Extrem viele Longs</span></td>
+        <td>Markt ist euphorisch, alle sind Long</td>
+        <td>Preis fällt → Long-Squeeze. "Crowd ist immer falsch."</td>
+      </tr>
+      <tr>
+        <td><span class="orange">55–65%</span></td>
+        <td><span class="orange">Longs leicht überwiegend</span></td>
+        <td>Leichte Bullishness, noch ok</td>
+        <td>Vorsicht bei sehr hohen Werten</td>
+      </tr>
+      <tr>
+        <td><span class="muted">45–55%</span></td>
+        <td><span class="muted">Ausgewogen</span></td>
+        <td>Keine klare Mehrheitsmeinung</td>
+        <td>Richtung noch offen</td>
+      </tr>
+      <tr>
+        <td><span class="green">35–45%</span></td>
+        <td><span class="green">Shorts leicht überwiegend</span></td>
+        <td>Markt pessimistisch</td>
+        <td>Konträr bullisch</td>
+      </tr>
+      <tr>
+        <td><span class="green bold">&lt;35%</span></td>
+        <td><span class="green">Extrem viele Shorts</span></td>
+        <td>Markt ist panisch, alle shorten</td>
+        <td>Short-Squeeze wahrscheinlich 🚀</td>
+      </tr>
+    </table>
+
+    <div class="example-box green">
+      <div class="example-title">✅ Konträr bullisches Setup</div>
+      BTC fällt 20%. Global Longs: <b class="green">32%</b>, Top Trader Longs: <b class="green">38%</b><br>
+      → Fast alle shorten → Shorts zahlen hohe Funding → Short-Squeeze Setup<br>
+      → Kleiner Kursanstieg reicht um Cascade-Liquidationen auszulösen → explosive Erholung
+    </div>
+    <div class="warn-box">
+      <b>Wichtig:</b> Long/Short Ratio ist ein <b>Konträr-Indikator</b> — die Mehrheit liegt öfter falsch als richtig. Wenn alle Long sind, wer kauft dann noch?
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- FEAR & GREED -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section" id="fg">
+  <div class="section-header">
+    <div class="section-icon">🌡️</div>
+    <div>
+      <div class="section-title">Fear & Greed Index</div>
+      <div class="section-subtitle">Wie emotional handelt der Markt gerade?</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Was fließt in den Index ein?</div>
+        <div class="card-desc">Volatilität (25%), Marktmomentum (25%), Social Media (15%), Bitcoin Dominanz (10%), Trends (10%), Volumen (25%). Quelle: alternative.me</div>
+      </div>
+      <div class="badge badge-orange">0–100</div>
+    </div>
+
+    <div class="gauge-row">
+      <div class="gauge-item" style="border-top:3px solid var(--red)">
+        <div class="gauge-val red">😱 0–25</div>
+        <div class="gauge-lbl">Extreme Fear</div>
+        <div style="font-size:11px;margin-top:6px"><span class="green">→ Kaufgelegenheit!</span><br><span class="muted">Markt in Panik</span></div>
+      </div>
+      <div class="gauge-item" style="border-top:3px solid var(--orange)">
+        <div class="gauge-val orange">😨 26–45</div>
+        <div class="gauge-lbl">Fear</div>
+        <div style="font-size:11px;margin-top:6px"><span class="green">→ Eher kaufen</span><br><span class="muted">Pessimismus</span></div>
+      </div>
+      <div class="gauge-item" style="border-top:3px solid var(--muted)">
+        <div class="gauge-val">😐 46–55</div>
+        <div class="gauge-lbl">Neutral</div>
+        <div style="font-size:11px;margin-top:6px"><span class="muted">Abwarten</span><br><span class="muted">Balance</span></div>
+      </div>
+      <div class="gauge-item" style="border-top:3px solid var(--green)">
+        <div class="gauge-val green">😊 56–75</div>
+        <div class="gauge-lbl">Greed</div>
+        <div style="font-size:11px;margin-top:6px"><span class="orange">→ Vorsicht</span><br><span class="muted">Optimismus</span></div>
+      </div>
+      <div class="gauge-item" style="border-top:3px solid var(--yellow)">
+        <div class="gauge-val yellow">🤑 76–100</div>
+        <div class="gauge-lbl">Extreme Greed</div>
+        <div style="font-size:11px;margin-top:6px"><span class="red">→ Verkaufen?</span><br><span class="muted">Euphorie/Top</span></div>
+      </div>
+    </div>
+
+    <div class="example-box green">
+      <div class="example-title">✅ Historisches Beispiel: Extreme Fear = Kauf</div>
+      <b>März 2020 (Corona-Crash):</b> F&G Index bei <b class="red">8</b> (Extreme Fear)<br>
+      BTC stand bei $4.000 → Wer kaufte, hatte 6 Monate später +1.000%<br>
+      <b>November 2022 (FTX-Crash):</b> F&G bei <b class="red">14</b> → BTC bei $15.500 → Boden!
+    </div>
+    <div class="example-box red">
+      <div class="example-title">🔴 Historisches Beispiel: Extreme Greed = Verkauf</div>
+      <b>November 2021 (ATH):</b> F&G bei <b class="yellow">90+</b> (Extreme Greed)<br>
+      BTC bei $69.000 → Danach -75% Crash über ein Jahr
+    </div>
+    <div class="tip">
+      <b>Warren Buffett über Märkte:</b> "Sei ängstlich, wenn andere gierig sind. Sei gierig, wenn andere ängstlich sind." — Gilt besonders für Crypto!
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- LIQUIDATIONSZONEN -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section" id="liqzonen">
+  <div class="section-header">
+    <div class="section-icon">⚡</div>
+    <div>
+      <div class="section-title">Liquidationszonen</div>
+      <div class="section-subtitle">Wo werden gehebelte Positionen zwangsgeschlossen?</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Was ist eine Liquidation?</div>
+        <div class="card-desc">Wer mit Hebel tradet, muss eine Margin hinterlegen. Bewegt sich der Preis zu stark gegen ihn, schließt die Börse die Position automatisch — die Liquidation. Das erzeugt oft schnelle, kaskadierende Bewegungen.</div>
+      </div>
+      <div class="badge badge-red">Wichtig!</div>
+    </div>
+
+    <table class="signal-table">
+      <tr><th>Hebel</th><th>Abstand zur Liq.</th><th>Bedeutung</th></tr>
+      <tr>
+        <td><span class="red bold">50x Hebel</span></td>
+        <td><span class="red">−1.9% (Long) / +1.9% (Short)</span></td>
+        <td>Schon ein kleiner Move löst Liquidationen aus → sehr gefährlich</td>
+      </tr>
+      <tr>
+        <td><span class="orange bold">20x Hebel</span></td>
+        <td><span class="orange">−4.8% / +4.8%</span></td>
+        <td>Normaler Tagesvolatilität reicht um Liq. auszulösen</td>
+      </tr>
+      <tr>
+        <td><span class="yellow bold">10x Hebel</span></td>
+        <td><span class="yellow">−9.6% / +9.6%</span></td>
+        <td>Stärkere Bewegung nötig — aber in Crypto normal</td>
+      </tr>
+      <tr>
+        <td><span class="green bold">5x Hebel</span></td>
+        <td><span class="green">−19% / +19%</span></td>
+        <td>Klar definierte Zones — als Kursziel nutzbar</td>
+      </tr>
+    </table>
+
+    <div class="example-box orange">
+      <div class="example-title">⚠️ Wie Liquidationen Kaskaden auslösen</div>
+      1. BTC fällt um 5% → 20x Long-Trader werden liquidiert<br>
+      2. Ihre Positionen werden zu Marktpreisen verkauft → Preis fällt weiter<br>
+      3. Das löst 10x Longs aus → noch mehr Verkäufe<br>
+      4. Innerhalb von Minuten: -15% in einer einzigen <b>Liquidationskaskade</b> 📉
+    </div>
+    <div class="tip">
+      <b>Liquidationszonen als Kursziele:</b> Market Maker wissen wo die meisten Liquidationen liegen. Der Preis wird oft gezielt dorthin bewegt ("Liquidity Hunt"), bevor er dreht.
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SZENARIEN -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section" id="szenarien">
+  <div class="section-header">
+    <div class="section-icon">🎬</div>
+    <div>
+      <div class="section-title">Komplette Szenarien — Alles zusammen lesen</div>
+      <div class="section-subtitle">So kombinierst du alle Indikatoren zu einer Gesamtlage</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">🟢 Szenario 1: Starkes Long-Setup</div>
+    </div>
+    <div style="font-size:13px;margin-bottom:14px;color:var(--muted)">Alle Ampeln stehen auf grün — optimale Einstiegsbedingungen</div>
+    <table class="signal-table">
+      <tr><th>Indikator</th><th>Wert</th><th>Signal</th></tr>
+      <tr><td>Preis vs EMA 200</td><td class="green">+8% über EMA 200</td><td class="green">✅ +3 Pkt</td></tr>
+      <tr><td>EMA 20/50</td><td class="green">EMA20 > EMA50</td><td class="green">✅ +2 Pkt</td></tr>
+      <tr><td>MACD</td><td class="green">MACD über Signal, Hist. wächst</td><td class="green">✅ +2 Pkt</td></tr>
+      <tr><td>RSI</td><td class="green">42 (leicht bullisch)</td><td class="green">✅ +1 Pkt</td></tr>
+      <tr><td>Fear & Greed</td><td class="red">18 (Extreme Fear)</td><td class="green">✅ Konträr bullisch</td></tr>
+      <tr><td>Funding Rate</td><td class="green">-0.08% (Shorts überhitzt)</td><td class="green">✅ +2 Pkt</td></tr>
+      <tr><td>OI Trend</td><td class="green">Steigt +15% in 24h</td><td class="green">✅ Neue Longs</td></tr>
+      <tr><td>Long/Short</td><td class="green">35% Longs (Shorts dominieren)</td><td class="green">✅ Konträr bullisch</td></tr>
+    </table>
+    <div class="example-box green">
+      <div class="example-title">→ Dashboard-Ergebnis</div>
+      <b class="green">🟢 LONG | Score: +8 | Konfidenz: 89%</b><br>
+      → Klassisches Setup nach einem Sell-Off mit extremer Angst. Short-Squeeze-Potenzial hoch.
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <div class="card-header">
+      <div class="card-title">🔴 Szenario 2: Klassisches Short-Setup</div>
+    </div>
+    <div style="font-size:13px;margin-bottom:14px;color:var(--muted)">Rally überdehnt — Warnsignale häufen sich</div>
+    <table class="signal-table">
+      <tr><th>Indikator</th><th>Wert</th><th>Signal</th></tr>
+      <tr><td>Preis vs EMA 200</td><td class="red">-5% unter EMA 200</td><td class="red">❌ -3 Pkt</td></tr>
+      <tr><td>EMA 20/50</td><td class="red">EMA20 < EMA50</td><td class="red">❌ -2 Pkt</td></tr>
+      <tr><td>MACD</td><td class="red">MACD unter Signal</td><td class="red">❌ -2 Pkt</td></tr>
+      <tr><td>RSI</td><td class="red">78 (überkauft)</td><td class="red">❌ -2 Pkt</td></tr>
+      <tr><td>Bollinger</td><td class="red">Über oberem Band + Volumen</td><td class="red">❌ -2 Pkt</td></tr>
+      <tr><td>Fear & Greed</td><td class="yellow">88 (Extreme Greed)</td><td class="red">❌ Konträr bärisch</td></tr>
+      <tr><td>Funding Rate</td><td class="red">+0.18% (Longs extrem)</td><td class="red">❌ -2 Pkt</td></tr>
+    </table>
+    <div class="example-box red">
+      <div class="example-title">→ Dashboard-Ergebnis</div>
+      <b class="red">🔴 SHORT | Score: -11 | Konfidenz: 92%</b><br>
+      → Rally auf Hebel, alle sind euphorisch. Funding-Crash und Liquidationskaskade drohen.
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <div class="card-header">
+      <div class="card-title">⚪ Szenario 3: Widersprüchliche Signale — Abwarten!</div>
+    </div>
+    <div class="scenario-grid">
+      <div class="scenario bull">
+        <div class="scenario-title green">Bullische Signale</div>
+        <ul>
+          <li>RSI: <b>29</b> überverkauft ✅</li>
+          <li>Funding: <b>-0.06%</b> ✅</li>
+          <li>Fear & Greed: <b>22</b> ✅</li>
+        </ul>
+      </div>
+      <div class="scenario bear">
+        <div class="scenario-title red">Bärische Signale</div>
+        <ul>
+          <li>Preis <b>-12%</b> unter EMA 200 ❌</li>
+          <li>EMA 20 < EMA 50 ❌</li>
+          <li>MACD unter Signal ❌</li>
+        </ul>
+      </div>
+    </div>
+    <div class="example-box">
+      <div class="example-title">→ Dashboard-Ergebnis</div>
+      <b>⚪ NEUTRAL | Score: 0 | Konfidenz: 30%</b><br>
+      → Markt könnte kurzfristig erholen (Überverkauft + Funding negativ), aber Haupttrend ist bärisch.<br>
+      → Kein klares Setup. Besser <b>abwarten</b> bis EMA 200 zurückerobert wird.
+    </div>
+  </div>
+</div>
+
+<!-- MTF -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon">🔭</div>
+    <div>
+      <div class="section-title">MTF — Multi-Timeframe Analyse</div>
+      <div class="section-subtitle">1h und 4h in die gleiche Richtung = stärkeres Signal</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Was ist MTF-Konfluenz?</div>
+        <div class="card-desc">Das Dashboard prüft ob 1h-Chart und 4h-Chart in die gleiche Richtung zeigen. Wenn ja, ist das Signal stärker (+1 Punkt Bonus). Wenn sie sich widersprechen, ist Vorsicht angebracht.</div>
+      </div>
+    </div>
+    <table class="signal-table">
+      <tr><th>1h Signal</th><th>4h Signal</th><th>MTF Status</th><th>Bedeutung</th></tr>
+      <tr><td class="green">🟢 Bullisch</td><td class="green">🟢 Bullisch</td><td><span class="green">✅ MTF Konfluenz +1</span></td><td>Beide Timeframes aligned → stärkeres Signal</td></tr>
+      <tr><td class="red">🔴 Bärisch</td><td class="red">🔴 Bärisch</td><td><span class="red">❌ MTF Konfluenz -1</span></td><td>Beide Timeframes bärisch → klarer Downtrend</td></tr>
+      <tr><td class="green">🟢 Bullisch</td><td class="red">🔴 Bärisch</td><td><span class="orange">⚠️ MTF Konflikt</span></td><td>Kurzfristig erholt, mittelfristig bärisch → vorsichtig</td></tr>
+      <tr><td class="red">🔴 Bärisch</td><td class="green">🟢 Bullisch</td><td><span class="orange">⚠️ MTF Konflikt</span></td><td>Kurzfristige Korrektur in Aufwärtstrend → oft Kaufgelegenheit</td></tr>
+    </table>
+  </div>
+</div>
+
+
+<!-- Disclaimer -->
+<div style="text-align:center;padding:32px;border:1px solid var(--border);border-radius:12px;background:var(--panel)">
+  <div style="font-size:20px;margin-bottom:12px">⚠️</div>
+  <div style="font-weight:700;font-size:16px;margin-bottom:8px">Kein Finanzrat</div>
+  <div style="color:var(--muted);font-size:13px;max-width:500px;margin:0 auto">
+    Alle hier beschriebenen Indikatoren und Signale dienen ausschließlich zu Informations- und Bildungszwecken. 
+    Technische Analyse garantiert keine Gewinne. Crypto ist hochspekulativ. Investiere nur was du bereit bist zu verlieren.
+  </div>
+  <div style="margin-top:16px">
+    <a href="/" style="background:var(--blue);color:#000;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:700">← Zurück zum Dashboard</a>
+  </div>
+</div>
+
+</div>
+</body>
+</html>
