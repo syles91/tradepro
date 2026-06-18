@@ -362,7 +362,11 @@ body {
   <button class="tf-btn" data-tf="4h">4h</button>
   <button class="tf-btn" data-tf="1d">1D</button>
   <div class="tf-divider"></div>
-  <button class="chart-type-btn active" id="typeCandle" title="Kerzen">📊 Kerzen</button>
+  <button class="chart-type-btn ema-btn" data-ema="9"   title="EMA 9"   style="color:#f7c948">EMA 9</button>
+  <button class="chart-type-btn ema-btn" data-ema="21"  title="EMA 21"  style="color:#5b8def">EMA 21</button>
+  <button class="chart-type-btn ema-btn" data-ema="50"  title="EMA 50"  style="color:#ff9800">EMA 50</button>
+  <button class="chart-type-btn ema-btn" data-ema="200" title="EMA 200" style="color:#b39ddb">EMA 200</button>
+  <div class="tf-divider"></div>
   <button class="chart-type-btn" id="vpToggle" title="Volume Profile">📊 VP</button>
   <button class="chart-type-btn" id="vahValToggle" title="POC / Value Area Linien">🎯 POC/VA</button>
 </div>
@@ -389,6 +393,8 @@ body {
       <div class="subchart-tab" data-sub="funding">💸 Funding Rate</div>
       <div class="subchart-tab" data-sub="ls">⚖️ Long/Short</div>
       <div class="subchart-tab" data-sub="cvd">🔵 CVD</div>
+      <div class="subchart-tab" data-sub="rsi">📈 RSI</div>
+      <div class="subchart-tab" data-sub="macd">📊 MACD</div>
       <div class="subchart-tab" data-sub="none">✕ Aus</div>
     </div>
     <div class="subchart-wrap show" id="subWrap"><div class="subchart" id="subchart"></div></div>
@@ -514,6 +520,7 @@ const State = {
   vpData: null,         // gecachte Volume-Profile-Daten
   vpLines: [],          // PriceLine-Referenzen (POC/VAH/VAL)
   viewRange: null,      // gemerkter sichtbarer Zeitbereich (für Chart<->Sub-Sync)
+  emaOn: new Set(),     // aktive EMA-Perioden (Overlay auf Hauptchart)
 };
 
 const fmt = {
@@ -580,13 +587,109 @@ const volumeSeries = chart.addHistogramSeries({
 });
 volumeSeries.priceScale().applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
 
+// ── EMA-Overlays (Hauptchart) ───────────────────────────────────────────────
+// Werden über Buttons in der Timeframe-Leiste ein-/ausgeblendet. Berechnung
+// clientseitig aus State.candles (gleiche Formel wie der KI-Snapshot im Backend).
+const EMA_DEFS = [
+  { period: 9,   color: '#f7c948' },
+  { period: 21,  color: '#5b8def' },
+  { period: 50,  color: '#ff9800' },
+  { period: 200, color: '#b39ddb' },
+];
+EMA_DEFS.forEach(d => {
+  d.series = chart.addLineSeries({
+    color: d.color, lineWidth: 2, priceLineVisible: false, lastValueVisible: false,
+    crosshairMarkerVisible: false, title: 'EMA' + d.period,
+  });
+});
+
 // Sub-chart
 let subChart = LightweightCharts.createChart(document.getElementById('subchart'), {
   ...chartOpts,
   rightPriceScale: { borderColor: '#232838', scaleMargins: { top: 0.15, bottom: 0.1 } },
   timeScale: { borderColor: '#232838', timeVisible: true, secondsVisible: false, visible: true },
 });
+// Sub-Chart-Serien werden bei jedem Reload neu erstellt. Damit Hilfsserien
+// (Baseline/Nulllinie, MACD-Linien etc.) NICHT akkumulieren, alle erzeugten
+// Serien hier sammeln und vor dem nächsten Aufbau gemeinsam entfernen.
 let subSeries = null;
+let subSeriesList = [];
+let rsiSeries = null, macdHist = null, macdLine = null, macdSignal = null;
+function addSub(series) { subSeriesList.push(series); return series; }
+function clearSubSeries() {
+  subSeriesList.forEach(s => { try { subChart.removeSeries(s); } catch(e) {} });
+  subSeriesList = [];
+  subSeries = null;
+  rsiSeries = null; macdHist = null; macdLine = null; macdSignal = null;
+}
+
+// ── Indikator-Berechnungen (clientseitig) ───────────────────────────────────
+function emaArray(values, period) {
+  const k = 2 / (period + 1);
+  const out = [];
+  let prev;
+  for (let i = 0; i < values.length; i++) {
+    prev = i === 0 ? values[i] : values[i] * k + prev * (1 - k);
+    out.push(prev);
+  }
+  return out;
+}
+function rsiArray(closes, period = 14) {
+  const out = new Array(closes.length).fill(null);
+  if (closes.length < period + 1) return out;
+  let gain = 0, loss = 0;
+  for (let i = 1; i <= period; i++) {
+    const d = closes[i] - closes[i - 1];
+    if (d >= 0) gain += d; else loss -= d;
+  }
+  gain /= period; loss /= period;
+  out[period] = loss === 0 ? 100 : 100 - 100 / (1 + gain / loss);
+  for (let i = period + 1; i < closes.length; i++) {
+    const d = closes[i] - closes[i - 1];
+    const g = d > 0 ? d : 0, l = d < 0 ? -d : 0;
+    gain = (gain * (period - 1) + g) / period;
+    loss = (loss * (period - 1) + l) / period;
+    out[i] = loss === 0 ? 100 : 100 - 100 / (1 + gain / loss);
+  }
+  return out;
+}
+function macdArrays(closes, fast = 12, slow = 26, signal = 9) {
+  const ef = emaArray(closes, fast);
+  const es = emaArray(closes, slow);
+  const macd = closes.map((_, i) => ef[i] - es[i]);
+  const sig = emaArray(macd, signal);
+  const hist = macd.map((m, i) => m - sig[i]);
+  return { macd, sig, hist };
+}
+
+// EMA-Overlays (neu)zeichnen — nur aktive Perioden
+function applyEMAs() {
+  const candles = State.candles;
+  const closes = candles.map(c => c.close);
+  EMA_DEFS.forEach(d => {
+    if (!State.emaOn.has(d.period) || !candles.length) { d.series.setData([]); return; }
+    const ema = emaArray(closes, d.period);
+    d.series.setData(candles.map((c, i) => ({ time: toLocalTime(c.time), value: ema[i] })));
+  });
+}
+function drawRSI() {
+  if (!rsiSeries || !State.candles.length) return;
+  const r = rsiArray(State.candles.map(c => c.close), 14);
+  const data = [];
+  State.candles.forEach((c, i) => { if (r[i] != null) data.push({ time: toLocalTime(c.time), value: r[i] }); });
+  rsiSeries.setData(data);
+}
+function drawMACD() {
+  if (!macdHist || !State.candles.length) return;
+  const { macd, sig, hist } = macdArrays(State.candles.map(c => c.close));
+  const t = i => toLocalTime(State.candles[i].time);
+  macdHist.setData(State.candles.map((c, i) => ({
+    time: t(i), value: hist[i],
+    color: hist[i] >= 0 ? 'rgba(38,166,154,.6)' : 'rgba(239,83,80,.6)'
+  })));
+  macdLine.setData(State.candles.map((c, i) => ({ time: t(i), value: macd[i] })));
+  macdSignal.setData(State.candles.map((c, i) => ({ time: t(i), value: sig[i] })));
+}
 
 // Sync timescales (main -> sub UNI-direkt, wie TradingView)
 // Nur der Haupt-Chart steuert den Sub-Chart, nicht umgekehrt.
@@ -638,6 +741,7 @@ async function loadChart() {
       time: toLocalTime(c.time), value: c.volume,
       color: c.close >= c.open ? 'rgba(38,166,154,.5)' : 'rgba(239,83,80,.5)'
     })));
+    applyEMAs();   // EMA-Overlays an die neuen Daten anpassen
     // Ans rechte (aktuelle) Ende springen statt nur fitContent –
     // sonst muss man nach Refresh erst vorwärts scrollen.
     // Zeigt die letzten ~120 Kerzen in vernünftiger Größe.
@@ -658,24 +762,24 @@ async function loadChart() {
 }
 
 async function loadSubChart() {
-  if (subSeries) { subChart.removeSeries(subSeries); subSeries = null; }
+  clearSubSeries();
   if (State.subType === 'none') return;
 
   try {
     if (State.subType === 'oi') {
       const res = await fetch(`/api/oi_hist?symbol=${State.symbol}&period=${oiPeriod()}&limit=200&exchange=${State.exchange}`);
       const data = await res.json();
-      subSeries = subChart.addAreaSeries({
+      subSeries = addSub(subChart.addAreaSeries({
         lineColor: '#2962ff', topColor: 'rgba(41,98,255,.4)', bottomColor: 'rgba(41,98,255,.02)',
         lineWidth: 2, priceFormat: { type: 'custom', formatter: v => fmt.usd(v) },
-      });
+      }));
       subSeries.setData(data.map(d => ({ time: toLocalTime(d.time), value: d.value })));
     } else if (State.subType === 'funding') {
       const res = await fetch(`/api/funding_hist?symbol=${State.symbol}&limit=200&exchange=${State.exchange}`);
       const data = await res.json();
-      subSeries = subChart.addHistogramSeries({
+      subSeries = addSub(subChart.addHistogramSeries({
         priceFormat: { type: 'custom', formatter: v => v.toFixed(4) + '%' },
-      });
+      }));
       const fpoints = data.map(d => ({
         time: toLocalTime(d.time), value: d.value,
         color: d.value >= 0 ? 'rgba(38,166,154,.7)' : 'rgba(239,83,80,.7)'
@@ -700,13 +804,13 @@ async function loadSubChart() {
     } else if (State.subType === 'ls') {
       const res = await fetch(`/api/ls_hist?symbol=${State.symbol}&period=${oiPeriod()}&limit=200&exchange=${State.exchange}`);
       const data = await res.json();
-      subSeries = subChart.addLineSeries({
+      subSeries = addSub(subChart.addLineSeries({
         color: '#26a69a', lineWidth: 2,
         priceFormat: { type: 'custom', formatter: v => v.toFixed(1) + '%' },
-      });
+      }));
       subSeries.setData(data.global.map(d => ({ time: toLocalTime(d.time), value: d.long })));
       // baseline 50%
-      const base = subChart.addLineSeries({ color: '#787b86', lineWidth: 1, lineStyle: 2, crosshairMarkerVisible: false });
+      const base = addSub(subChart.addLineSeries({ color: '#787b86', lineWidth: 1, lineStyle: 2, crosshairMarkerVisible: false }));
       if (data.global.length) base.setData([
         { time: toLocalTime(data.global[0].time), value: 50 },
         { time: toLocalTime(data.global[data.global.length-1].time), value: 50 }
@@ -714,16 +818,48 @@ async function loadSubChart() {
     } else if (State.subType === 'cvd') {
       const res = await fetch(`/api/cvd?symbol=${State.symbol}&tf=${State.tf}&limit=300&exchange=${State.exchange}`);
       const data = await res.json();
-      subSeries = subChart.addAreaSeries({
+      subSeries = addSub(subChart.addAreaSeries({
         lineColor: '#5b8def', topColor: 'rgba(91,141,239,.35)', bottomColor: 'rgba(91,141,239,.02)',
         lineWidth: 2, priceFormat: { type: 'custom', formatter: v => fmt.compact(v) },
-      });
+      }));
       subSeries.setData(data.map(d => ({ time: toLocalTime(d.time), value: d.cvd })));
       // Nulllinie
-      const zero = subChart.addLineSeries({ color: '#787b86', lineWidth: 1, lineStyle: 2, crosshairMarkerVisible: false, lastValueVisible: false });
+      const zero = addSub(subChart.addLineSeries({ color: '#787b86', lineWidth: 1, lineStyle: 2, crosshairMarkerVisible: false, lastValueVisible: false }));
       if (data.length) zero.setData([
         { time: toLocalTime(data[0].time), value: 0 }, { time: toLocalTime(data[data.length-1].time), value: 0 }
       ]);
+    } else if (State.subType === 'rsi') {
+      // RSI(14) aus den bereits geladenen Kerzen (kein extra Request nötig)
+      rsiSeries = addSub(subChart.addLineSeries({
+        color: '#b39ddb', lineWidth: 2,
+        priceFormat: { type: 'custom', formatter: v => v.toFixed(1) },
+      }));
+      drawRSI();
+      // Level-Linien 70 / 50 / 30
+      [[70, '#ef5350'], [50, '#787b86'], [30, '#26a69a']].forEach(([lvl, col]) =>
+        rsiSeries.createPriceLine({ price: lvl, color: col, lineWidth: 1, lineStyle: 2, axisLabelVisible: true }));
+      // Unsichtbarer Anker fixiert die Skala auf 0–100
+      if (State.candles.length) {
+        const anchor = addSub(subChart.addLineSeries({
+          color: 'rgba(0,0,0,0)', lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false,
+        }));
+        anchor.setData([
+          { time: toLocalTime(State.candles[0].time), value: 0 },
+          { time: toLocalTime(State.candles[State.candles.length - 1].time), value: 100 },
+        ]);
+      }
+    } else if (State.subType === 'macd') {
+      // MACD(12,26,9) aus den geladenen Kerzen
+      macdHist = addSub(subChart.addHistogramSeries({
+        priceFormat: { type: 'custom', formatter: v => v.toFixed(2) },
+      }));
+      macdLine = addSub(subChart.addLineSeries({
+        color: '#5b8def', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+      }));
+      macdSignal = addSub(subChart.addLineSeries({
+        color: '#ff9800', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+      }));
+      drawMACD();
     }
     // Sub-Chart auf den ZEIT-Bereich des Haupt-Charts setzen, damit beide
     // exakt dieselbe Zeitlinie zeigen. Bevorzugt den in loadChart gemerkten
@@ -1037,6 +1173,14 @@ function handleWS(msg) {
     volumeSeries.update({ time: toLocalTime(c.time), value: c.volume,
       color: c.close >= c.open ? 'rgba(38,166,154,.5)' : 'rgba(239,83,80,.5)' });
     State.lastCandle = c;
+    // State.candles synchron halten, damit Indikatoren live mitlaufen.
+    const arr = State.candles;
+    if (arr.length && arr[arr.length - 1].time === c.time) arr[arr.length - 1] = c;
+    else arr.push(c);
+    // Indikatoren neu berechnen (nur wenn aktiv)
+    if (State.emaOn.size) applyEMAs();
+    if (State.subType === 'rsi') drawRSI();
+    else if (State.subType === 'macd') drawMACD();
     // live price im Header
     const chgEl = document.getElementById('tPrice');
     chgEl.textContent = fmt.price(c.close);
@@ -1100,8 +1244,9 @@ function switchSymbol(sym) {
 function switchTF(tf) {
   State.tf = tf;
   document.querySelectorAll('.tf-btn').forEach(b => b.classList.toggle('active', b.dataset.tf === tf));
-  loadChart();
-  loadSubChart();
+  // loadChart MUSS vor loadSubChart fertig sein: RSI/MACD lesen State.candles,
+  // und State.viewRange wird erst in loadChart gesetzt.
+  loadChart().then(() => loadSubChart());
   subscribe();
 }
 
@@ -1171,6 +1316,13 @@ document.querySelectorAll('.tf-btn').forEach(b => b.onclick = () => switchTF(b.d
 document.querySelectorAll('.subchart-tab').forEach(t => t.onclick = () => switchSub(t.dataset.sub));
 // Exchange switcher
 document.querySelectorAll('.ex-btn').forEach(b => b.onclick = () => switchExchange(b.dataset.ex));
+// EMA-Overlays umschalten
+document.querySelectorAll('.ema-btn').forEach(b => b.onclick = () => {
+  const p = Number(b.dataset.ema);
+  if (State.emaOn.has(p)) State.emaOn.delete(p); else State.emaOn.add(p);
+  b.classList.toggle('active', State.emaOn.has(p));
+  applyEMAs();
+});
 
 // Volume Profile Toggles
 document.getElementById('vpToggle').onclick = function() {

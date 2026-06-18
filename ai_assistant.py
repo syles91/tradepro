@@ -21,7 +21,7 @@ BN_FUT_DATA = "https://fapi.binance.com/futures/data"
 BY_REST     = "https://api.bybit.com/v5"
 BYBIT_TF = {"1m": "1", "3m": "3", "5m": "5", "15m": "15", "1h": "60", "4h": "240", "1d": "D"}
 
-ANTHROPIC_MODEL = "claude-sonnet-4-5-20250929"
+ANTHROPIC_MODEL = "claude-sonnet-4-6"
 MAX_TOKENS = 1100
 
 

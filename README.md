@@ -36,6 +36,7 @@ TradingView oder Coinglass, aber selbst gehostet auf dem Unraid-Server.
 - ⚡ Live-Updates: nur die **letzte Kerze** wird aktualisiert, kein Reload
 - 🔄 7 Timeframes (1m, 3m, 5m, 15m, 1h, 4h, 1D)
 - 🪙 Symbol-Wechsel (8 Coins, durchsuchbar)
+- 📈 Indikatoren: EMA-Overlays (9/21/50/200), RSI(14) & MACD(12,26,9) als Sub-Charts — live mitlaufend
 - 📦 Open-Interest-Verlauf (Sub-Chart)
 - 💸 Funding-Rate live + History
 - ⚖️ Long/Short-Ratio (Global + Top Trader)
