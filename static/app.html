@@ -352,6 +352,54 @@ body {
 }
 
 
+
+/* Chart Fullscreen */
+.chart-fs-btn {
+  position: absolute; top: 12px; right: 12px; z-index: 20;
+  width: 40px; height: 40px; border-radius: 11px;
+  border: 1px solid rgba(91,141,239,.55);
+  background: rgba(19,23,34,.78); color: #fff;
+  display: grid; place-items: center; cursor: pointer;
+  font-size: 18px; font-weight: 900; backdrop-filter: blur(8px);
+  box-shadow: 0 10px 28px rgba(0,0,0,.35);
+}
+.chart-fs-btn:hover { background: rgba(41,98,255,.88); border-color: var(--blue-lt); }
+body.chart-fullscreen { overflow: hidden; }
+body.chart-fullscreen .topbar,
+body.chart-fullscreen .tf-bar,
+body.chart-fullscreen .watchlist,
+body.chart-fullscreen .sidebar,
+body.chart-fullscreen .mobile-nav,
+body.chart-fullscreen .mobile-backdrop { display: none !important; }
+body.chart-fullscreen .main { padding: 0 !important; display: block; height: 100dvh; }
+body.chart-fullscreen .chart-area {
+  position: fixed; inset: 0; z-index: 900; width: 100vw; height: 100dvh;
+  background: var(--bg); display: flex; border: 0;
+  padding: max(0px, env(safe-area-inset-top)) max(0px, env(safe-area-inset-right)) max(0px, env(safe-area-inset-bottom)) max(0px, env(safe-area-inset-left));
+}
+body.chart-fullscreen .chart-main { flex: 1; min-height: 0; }
+body.chart-fullscreen .subchart-wrap { height: min(24dvh, 190px); }
+body.chart-fullscreen .subchart-tabs { min-height: 42px; }
+body.chart-fullscreen #chartFullscreenBtn { background: rgba(239,83,80,.88); border-color: var(--red-br); }
+body.chart-fullscreen #chartFullscreenBtn::after { content: ' Exit'; font-size: 11px; margin-left: 4px; }
+body.chart-fullscreen #chartFullscreenBtn { width: auto; min-width: 58px; padding: 0 10px; }
+
+@media (max-width: 820px) {
+  .chart-fs-btn { top: 10px; right: 10px; width: 44px; height: 44px; border-radius: 13px; }
+  .fs-inline-btn { display: inline-flex; align-items: center; }
+  body.chart-fullscreen .subchart-wrap { height: min(23dvh, 145px); }
+  body.chart-fullscreen .subchart-tabs { min-height: 40px; }
+}
+@media (max-width: 420px) {
+  .fs-inline-btn { font-size: 0; width: 38px; }
+  .fs-inline-btn::before { content: '⛶'; font-size: 15px; }
+}
+@media (orientation: landscape) and (max-height: 520px) and (max-width: 920px) {
+  body.chart-fullscreen .subchart-wrap { height: 86px; }
+  body.chart-fullscreen .subchart-tabs { min-height: 36px; }
+}
+
+
 /* ════════ PROFESSIONAL RESPONSIVE POLISH v2 ════════ */
 :root { --bottom-nav-h: 58px; --safe-bottom: env(safe-area-inset-bottom, 0px); }
 button, .wl-item, .side-tab, .subchart-tab, .symbol-box { touch-action: manipulation; }
@@ -519,6 +567,7 @@ button, .wl-item, .side-tab, .subchart-tab, .symbol-box { touch-action: manipula
   <button class="chart-type-btn active" id="typeCandle" title="Kerzen">📊 Kerzen</button>
   <button class="chart-type-btn" id="vpToggle" title="Volume Profile">📊 VP</button>
   <button class="chart-type-btn" id="vahValToggle" title="POC / Value Area Linien">🎯 POC/VA</button>
+  <button class="chart-type-btn fs-inline-btn" id="chartFullscreenTop" title="Chart Fullscreen">⛶ Fullscreen</button>
 </div>
 
 <!-- MAIN -->
@@ -535,6 +584,7 @@ button, .wl-item, .side-tab, .subchart-tab, .symbol-box { touch-action: manipula
     <div class="chart-main">
       <div id="chart"></div>
       <canvas id="vpCanvas" style="position:absolute;inset:0;pointer-events:none;z-index:3;display:none"></canvas>
+      <button class="chart-fs-btn" id="chartFullscreenBtn" title="Chart Fullscreen" aria-label="Chart Fullscreen">⛶</button>
       <div class="chart-loading" id="chartLoading"><div class="spinner"></div><span class="muted">Lade Chart…</span></div>
     </div>
     <!-- Sub-chart tabs -->
@@ -689,6 +739,7 @@ const State = {
   showVP: false,        // Volume Profile Histogramm
   signalLines: [],       // Entry/SL/TP PriceLine-Referenzen
   latestSignals: [],
+  chartFullscreen: false,
   showVA: false,        // POC / Value Area Linien
   vpData: null,         // gecachte Volume-Profile-Daten
   vpLines: [],          // PriceLine-Referenzen (POC/VAH/VAL)
@@ -792,12 +843,44 @@ syncTimeScales();
 // Resize handling
 function resizeCharts() {
   const cm = document.getElementById('chart');
+  if (!cm.clientWidth || !cm.clientHeight) { setTimeout(resizeCharts, 80); return; }
   chart.resize(cm.clientWidth, cm.clientHeight);
   const sw = document.getElementById('subchart');
   if (sw.clientWidth) subChart.resize(sw.clientWidth, sw.clientHeight);
   if (State.showVP) drawVolumeProfile();
 }
 window.addEventListener('resize', resizeCharts);
+
+
+// ════════════════════════════════════════════════════════════════════════════
+//  CHART FULLSCREEN
+// ════════════════════════════════════════════════════════════════════════════
+async function setChartFullscreen(on) {
+  const area = document.querySelector('.chart-area');
+  State.chartFullscreen = !!on;
+  document.body.classList.toggle('chart-fullscreen', State.chartFullscreen);
+  const btn = document.getElementById('chartFullscreenBtn');
+  const top = document.getElementById('chartFullscreenTop');
+  if (btn) { btn.textContent = State.chartFullscreen ? '⛶' : '⛶'; btn.title = State.chartFullscreen ? 'Fullscreen beenden' : 'Chart Fullscreen'; }
+  if (top) { top.classList.toggle('active', State.chartFullscreen); top.title = State.chartFullscreen ? 'Fullscreen beenden' : 'Chart Fullscreen'; }
+  try {
+    if (State.chartFullscreen && area.requestFullscreen && !document.fullscreenElement) await area.requestFullscreen({ navigationUI: 'hide' });
+    if (!State.chartFullscreen && document.fullscreenElement && document.exitFullscreen) await document.exitFullscreen();
+  } catch(e) { /* iOS Safari: CSS-Fullscreen reicht */ }
+  setTimeout(resizeCharts, 80);
+  setTimeout(resizeCharts, 260);
+}
+function toggleChartFullscreen() { setChartFullscreen(!State.chartFullscreen); }
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement && State.chartFullscreen) {
+    State.chartFullscreen = false;
+    document.body.classList.remove('chart-fullscreen');
+    const top = document.getElementById('chartFullscreenTop');
+    if (top) top.classList.remove('active');
+    setTimeout(resizeCharts, 80);
+  }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && State.chartFullscreen) setChartFullscreen(false); });
 
 // ════════════════════════════════════════════════════════════════════════════
 //  DATA LOADING
@@ -1444,6 +1527,8 @@ document.getElementById('vahValToggle').onclick = function() {
   if (State.showVA && !State.vpData) loadVolumeProfile();
   else drawValueAreaLines();
 };
+document.getElementById('chartFullscreenBtn').onclick = toggleChartFullscreen;
+document.getElementById('chartFullscreenTop').onclick = toggleChartFullscreen;
 // VP-Redraw-Timer (faengt vertikales Zoomen der Preisskala ab)
 setInterval(() => { if (State.showVP) drawVolumeProfile(); }, 600);
 
