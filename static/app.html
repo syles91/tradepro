@@ -843,6 +843,7 @@ const State = {
   activeSignalTFs: JSON.parse(localStorage.getItem('tradepro.signalTFs') || '["5m","15m","1h"]'),
   user: null,
   settings: null,
+  lastBacktestResult: null,
   chartFullscreen: false,
   showVA: false,        // POC / Value Area Linien
   vpData: null,         // gecachte Volume-Profile-Daten
@@ -1568,6 +1569,16 @@ async function loadStrategies() {
     });
   } catch(e) { el.innerHTML = '<div class="liq-empty">Strategien konnten nicht geladen werden.</div>'; }
 }
+function renderBacktestResult(run) {
+  if (!run || !run.result) return 'Noch kein Backtest ausgeführt.';
+  const r = run.result;
+  const cls = r.net_r >= 0 ? 'bt-green' : 'bt-red';
+  return `<b>${r.strategy_name}</b> · ${r.symbol} ${r.timeframe}<br>
+    Trades: <b>${r.trades}</b> · Winrate: <b>${r.winrate}%</b> · Net: <b class="${cls}">${r.net_r}R</b><br>
+    Avg: ${r.avg_r}R · PF: ${r.profit_factor} · Max DD: <span class="bt-red">${r.max_drawdown_r}R</span><br>
+    <span class="muted">Modell: ${r.model || 'classic'} · Fees ${r.fee_bps || 0}bps · Slippage ${r.slippage_bps || 0}bps</span>
+    <table class="bt-table"><tbody>${(r.trades_sample||[]).slice(-5).reverse().map(t => `<tr><td>${t.side}</td><td>${t.outcome}</td><td class="${t.r_multiple>=0?'bt-green':'bt-red'}">${t.r_multiple}R</td></tr>`).join('')}</tbody></table>`;
+}
 async function loadAnalytics() {
   const el = document.getElementById('analyticsBody');
   try {
@@ -1585,7 +1596,7 @@ async function loadAnalytics() {
         <label>Kerzen<input id="btLimit" type="number" value="1000" min="260" max="1500"></label>
       </div>
       <button class="backtest-run" id="runBacktest">Backtest starten</button>
-      <div class="backtest-result" id="backtestResult">Noch kein Backtest ausgeführt.</div>
+      <div class="backtest-result" id="backtestResult">${renderBacktestResult(State.lastBacktestResult)}</div>
     </div>
     <div class="kpi-grid">
       <div class="kpi"><div class="v">${a.total_signals}</div><div class="l">Signale</div></div>
@@ -1615,13 +1626,8 @@ async function runBacktest() {
   try {
     const run = await fetch('/api/backtest/run?' + params.toString(), { method:'POST' }).then(r => r.json());
     if (run.error) throw new Error(run.error);
-    const r = run.result;
-    const cls = r.net_r >= 0 ? 'bt-green' : 'bt-red';
-    out.innerHTML = `<b>${r.strategy_name}</b> · ${r.symbol} ${r.timeframe}<br>
-      Trades: <b>${r.trades}</b> · Winrate: <b>${r.winrate}%</b> · Net: <b class="${cls}">${r.net_r}R</b><br>
-      Avg: ${r.avg_r}R · PF: ${r.profit_factor} · Max DD: <span class="bt-red">${r.max_drawdown_r}R</span>
-      <table class="bt-table"><tbody>${(r.trades_sample||[]).slice(-5).reverse().map(t => `<tr><td>${t.side}</td><td>${t.outcome}</td><td class="${t.r_multiple>=0?'bt-green':'bt-red'}">${t.r_multiple}R</td></tr>`).join('')}</tbody></table>`;
-    loadAnalytics();
+    State.lastBacktestResult = run;
+    out.innerHTML = renderBacktestResult(run);
   } catch(e) { out.innerHTML = '<span class="bt-red">Backtest Fehler: ' + e.message + '</span>'; }
 }
 
