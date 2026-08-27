@@ -400,6 +400,25 @@ body.chart-fullscreen #chartFullscreenBtn { width: auto; min-width: 58px; paddin
 }
 
 
+
+.open-signal-strip { padding: 10px 12px; border-bottom: 1px solid var(--border); background: rgba(247,201,72,.045); }
+.open-signal-title { display:flex; justify-content:space-between; align-items:center; font-size:11px; color:var(--muted); text-transform:uppercase; font-weight:900; margin-bottom:7px; }
+.open-signal-list { display:flex; flex-direction:column; gap:7px; }
+.open-signal-pill { border:1px solid rgba(247,201,72,.32); border-radius:10px; padding:8px; background:rgba(247,201,72,.06); cursor:pointer; }
+.open-signal-pill .row { display:flex; justify-content:space-between; gap:8px; font-size:11px; }
+.open-signal-pill b { color:var(--txt); }
+.outcome-chip { padding:2px 6px; border-radius:999px; font-size:9px; font-weight:900; background:rgba(247,201,72,.16); color:var(--yellow); }
+.backtest-box { border:1px solid var(--border); background:var(--panel); border-radius:12px; padding:11px; margin-bottom:12px; }
+.backtest-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
+.backtest-grid label { display:flex; flex-direction:column; gap:4px; color:var(--muted); font-size:10px; text-transform:uppercase; font-weight:800; }
+.backtest-grid select,.backtest-grid input { background:var(--bg); border:1px solid var(--border); color:var(--txt); border-radius:8px; padding:8px; font-size:12px; min-width:0; }
+.backtest-run { margin-top:9px; width:100%; background:rgba(41,98,255,.16); border:1px solid rgba(91,141,239,.45); color:var(--blue-lt); border-radius:9px; padding:9px; font-weight:900; cursor:pointer; }
+.backtest-result { margin-top:10px; font-size:12px; line-height:1.55; color:#cfd6e6; }
+.bt-table { width:100%; border-collapse:collapse; font-size:11px; margin-top:8px; }
+.bt-table td { border-bottom:1px solid var(--border); padding:6px 3px; }
+.bt-green { color:var(--green-br); } .bt-red { color:var(--red-br); } .bt-yellow { color:var(--yellow); }
+@media (max-width:820px){ .backtest-grid{grid-template-columns:1fr;} .open-signal-strip{padding:11px 13px;} }
+
 /* ════════ PROFESSIONAL RESPONSIVE POLISH v2 ════════ */
 :root { --bottom-nav-h: 58px; --safe-bottom: env(safe-area-inset-bottom, 0px); }
 button, .wl-item, .side-tab, .subchart-tab, .symbol-box { touch-action: manipulation; }
@@ -668,7 +687,8 @@ button, .wl-item, .side-tab, .subchart-tab, .symbol-box { touch-action: manipula
     <!-- TAB: Signals -->
     <div class="side-pane" id="paneSignals" style="display:none">
       <div class="panel-head">⚡ Live Signale <span id="signalCtx" class="muted"></span></div>
-      <div class="signal-toolbar"><button id="runSignals">Neu berechnen</button><button id="openStats">Statistik</button></div>
+      <div class="signal-toolbar"><button id="runSignals">Neu berechnen</button><button id="refreshOpenSignals">Offene prüfen</button><button id="openStats">Statistik</button></div>
+      <div class="open-signal-strip"><div class="open-signal-title"><span>Offene Signale</span><span id="openSignalCount">0</span></div><div class="open-signal-list" id="openSignalList"><div class="liq-empty">Lade offene Signale…</div></div></div>
       <div class="signal-list" id="signalList"><div class="liq-empty">Noch keine Signale berechnet.</div></div>
     </div>
 
@@ -680,7 +700,7 @@ button, .wl-item, .side-tab, .subchart-tab, .symbol-box { touch-action: manipula
 
     <!-- TAB: Statistics -->
     <div class="side-pane" id="paneStats" style="display:none">
-      <div class="panel-head">📊 Signal Statistik</div>
+      <div class="panel-head">📊 Signal Statistik & Backtests</div>
       <div class="analytics-body" id="analyticsBody"><div class="liq-empty">Noch keine Statistik geladen.</div></div>
     </div>
   </div>
@@ -1359,6 +1379,33 @@ function drawSignalLines(signal) {
   if (signal.stop_loss) State.signalLines.push(mk(signal.stop_loss, '#ef5350', 'SL'));
   (signal.take_profit || []).forEach((tp, i) => State.signalLines.push(mk(tp, '#26a69a', 'TP' + (i+1), 1)));
 }
+function renderOpenSignals(payload) {
+  const list = document.getElementById('openSignalList');
+  const count = document.getElementById('openSignalCount');
+  const rows = payload.signals || [];
+  if (count) count.textContent = rows.length;
+  if (!list) return;
+  if (!rows.length) {
+    list.innerHTML = '<div class="liq-empty">Keine offenen Signale. Neue Setups werden automatisch hier gespeichert.</div>';
+    return;
+  }
+  list.innerHTML = rows.slice(0,6).map((s, idx) => `<div class="open-signal-pill" data-osidx="${idx}">
+    <div class="row"><b>${s.symbol} · ${s.timeframe}</b><span class="outcome-chip">${s.outcome || 'OPEN'}</span></div>
+    <div class="row"><span>${s.strategy_name}</span><span class="signal-badge ${s.side}">${s.side}</span></div>
+    <div class="row"><span>Entry ${fmt.price(s.entry)}</span><span>SL ${fmt.price(s.stop_loss)}</span></div>
+  </div>`).join('');
+  list.querySelectorAll('.open-signal-pill').forEach(card => card.onclick = () => drawSignalLines(rows[Number(card.dataset.osidx)]));
+}
+async function loadOpenSignals(refresh=true) {
+  try {
+    const data = await fetch('/api/signals/open?refresh=' + (refresh ? 'true' : 'false')).then(r => r.json());
+    renderOpenSignals(data);
+    loadAnalytics();
+  } catch(e) {
+    const list = document.getElementById('openSignalList');
+    if (list) list.innerHTML = '<div class="liq-empty">Offene Signale konnten nicht geladen werden.</div>';
+  }
+}
 function renderSignals(data) {
   const list = document.getElementById('signalList');
   const ctx = document.getElementById('signalCtx');
@@ -1389,6 +1436,7 @@ async function loadSignals() {
     const params = new URLSearchParams({ symbol: State.symbol, tf: State.tf, exchange: State.exchange, persist: 'true' });
     const data = await fetch('/api/signals/current?' + params.toString()).then(r => r.json());
     renderSignals(data);
+    loadOpenSignals(false);
   } catch(e) {
     if (list) list.innerHTML = '<div class="liq-empty">Signal-Fehler: ' + e.message + '</div>';
   }
@@ -1412,15 +1460,56 @@ async function loadAnalytics() {
   const el = document.getElementById('analyticsBody');
   try {
     const a = await fetch('/api/analytics/overview').then(r => r.json());
-    const rows = (a.by_strategy || []).map(r => `<tr><td>${r.strategy_name}</td><td>${r.signals}</td><td>${Number(r.avg_confidence||0).toFixed(1)}%</td><td>${r.longs||0}/${r.shorts||0}</td></tr>`).join('');
-    el.innerHTML = `<div class="kpi-grid">
+    const rows = (a.by_strategy || []).map(r => `<tr><td>${r.strategy_name}</td><td>${r.signals}</td><td>${Number(r.avg_confidence||0).toFixed(1)}%</td><td>${Number(r.avg_r||0).toFixed(2)}R</td></tr>`).join('');
+    const strategies = (await fetch('/api/strategies').then(r => r.json()).catch(()=>({strategies:[]}))).strategies || [];
+    const opts = strategies.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+    el.innerHTML = `<div class="backtest-box">
+      <div class="strategy-title">Backtest Modul</div>
+      <div class="strategy-desc">Testet Strategie-Signale historisch auf Kerzendaten. Erst Backtest/Paper, dann echte Execution.</div>
+      <div class="backtest-grid">
+        <label>Strategie<select id="btStrategy">${opts}</select></label>
+        <label>Symbol<input id="btSymbol" value="${State.symbol}"></label>
+        <label>Timeframe<select id="btTf"><option>5m</option><option>15m</option><option>1h</option><option>4h</option></select></label>
+        <label>Kerzen<input id="btLimit" type="number" value="1000" min="260" max="1500"></label>
+      </div>
+      <button class="backtest-run" id="runBacktest">Backtest starten</button>
+      <div class="backtest-result" id="backtestResult">Noch kein Backtest ausgeführt.</div>
+    </div>
+    <div class="kpi-grid">
       <div class="kpi"><div class="v">${a.total_signals}</div><div class="l">Signale</div></div>
-      <div class="kpi"><div class="v">${a.confirmed_signals}</div><div class="l">Confirmed</div></div>
-      <div class="kpi"><div class="v">${a.watch_signals}</div><div class="l">Watch</div></div>
-      <div class="kpi"><div class="v">${a.avg_confidence}%</div><div class="l">Ø Confidence</div></div>
-    </div><table class="analytics-table"><thead><tr><th>Strategie</th><th>N</th><th>Ø Conf</th><th>L/S</th></tr></thead><tbody>${rows}</tbody></table>`;
+      <div class="kpi"><div class="v">${a.open_signals || 0}</div><div class="l">Offen</div></div>
+      <div class="kpi"><div class="v">${a.closed_signals || 0}</div><div class="l">Closed</div></div>
+      <div class="kpi"><div class="v">${a.avg_r || 0}R</div><div class="l">Ø R</div></div>
+    </div><table class="analytics-table"><thead><tr><th>Strategie</th><th>N</th><th>Ø Conf</th><th>Ø R</th></tr></thead><tbody>${rows}</tbody></table>`;
+    const tf = document.getElementById('btTf'); if (tf) tf.value = State.tf;
+    document.getElementById('runBacktest').onclick = runBacktest;
   } catch(e) { el.innerHTML = '<div class="liq-empty">Statistik konnte nicht geladen werden.</div>'; }
 }
+async function runBacktest() {
+  const out = document.getElementById('backtestResult');
+  out.innerHTML = '<span class="bt-yellow">Backtest läuft…</span>';
+  const params = new URLSearchParams({
+    strategy_id: document.getElementById('btStrategy').value,
+    symbol: document.getElementById('btSymbol').value.trim().toUpperCase() || State.symbol,
+    tf: document.getElementById('btTf').value,
+    exchange: State.exchange,
+    limit: document.getElementById('btLimit').value || '1000',
+    horizon: '96',
+    min_status: 'watch'
+  });
+  try {
+    const run = await fetch('/api/backtest/run?' + params.toString(), { method:'POST' }).then(r => r.json());
+    if (run.error) throw new Error(run.error);
+    const r = run.result;
+    const cls = r.net_r >= 0 ? 'bt-green' : 'bt-red';
+    out.innerHTML = `<b>${r.strategy_name}</b> · ${r.symbol} ${r.timeframe}<br>
+      Trades: <b>${r.trades}</b> · Winrate: <b>${r.winrate}%</b> · Net: <b class="${cls}">${r.net_r}R</b><br>
+      Avg: ${r.avg_r}R · PF: ${r.profit_factor} · Max DD: <span class="bt-red">${r.max_drawdown_r}R</span>
+      <table class="bt-table"><tbody>${(r.trades_sample||[]).slice(-5).reverse().map(t => `<tr><td>${t.side}</td><td>${t.outcome}</td><td class="${t.r_multiple>=0?'bt-green':'bt-red'}">${t.r_multiple}R</td></tr>`).join('')}</tbody></table>`;
+    loadAnalytics();
+  } catch(e) { out.innerHTML = '<span class="bt-red">Backtest Fehler: ' + e.message + '</span>'; }
+}
+
 
 // ════════════════════════════════════════════════════════════════════════════
 //  ACTIONS
@@ -1544,7 +1633,7 @@ document.querySelectorAll('.side-tab').forEach(t => t.onclick = () => {
   document.getElementById('paneStats').style.display = tab === 'stats' ? 'flex' : 'none';
   obActive = tab === 'orderbook';
   if (obActive) { loadOrderbook(); setTimeout(drawDepthChart, 60); }
-  if (tab === 'signals') loadSignals();
+  if (tab === 'signals') { loadSignals(); loadOpenSignals(true); }
   if (tab === 'strategies') loadStrategies();
   if (tab === 'stats') loadAnalytics();
 });
@@ -1562,6 +1651,7 @@ function switchExchange(ex) {
 }
 
 document.getElementById('runSignals').onclick = loadSignals;
+document.getElementById('refreshOpenSignals').onclick = () => loadOpenSignals(true);
 document.getElementById('signalRefreshTop').onclick = () => { loadSignals(); activateSideTab('signals'); if (window.innerWidth <= 820) showMobilePanel('signals'); };
 document.getElementById('openStats').onclick = () => activateSideTab('stats');
 
@@ -1724,6 +1814,7 @@ async function init() {
   await loadWatchlist();
   loadStrategies();
   loadAnalytics();
+  loadOpenSignals(true);
   reloadAll();
   connectWS();
   resizeCharts();
@@ -1731,6 +1822,7 @@ async function init() {
   setInterval(loadWatchlist, 15000);
   setInterval(loadTicker, 10000);
   setInterval(loadLS, 30000);
+  setInterval(() => loadOpenSignals(true), 60000);
   // WS ping
   setInterval(() => { if (State.ws && State.ws.readyState===1) State.ws.send(JSON.stringify({action:'ping'})); }, 25000);
 }
