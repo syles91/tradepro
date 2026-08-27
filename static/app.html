@@ -419,6 +419,19 @@ body.chart-fullscreen #chartFullscreenBtn { width: auto; min-width: 58px; paddin
 .bt-green { color:var(--green-br); } .bt-red { color:var(--red-br); } .bt-yellow { color:var(--yellow); }
 @media (max-width:820px){ .backtest-grid{grid-template-columns:1fr;} .open-signal-strip{padding:11px 13px;} }
 
+
+.signal-scope { padding:10px 12px; border-bottom:1px solid var(--border); background:rgba(91,141,239,.035); }
+.signal-scope-head { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px; }
+.signal-scope-title { font-size:11px; color:var(--muted); text-transform:uppercase; font-weight:900; }
+.signal-scope-hint { font-size:10px; color:#8f98aa; line-height:1.35; margin-top:7px; }
+.signal-tf-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+.signal-tf-chip { border:1px solid var(--border); background:var(--bg); color:var(--muted); border-radius:9px; padding:8px 6px; text-align:center; font-size:11px; font-weight:900; cursor:pointer; user-select:none; }
+.signal-tf-chip.active { background:rgba(41,98,255,.18); border-color:rgba(91,141,239,.65); color:var(--blue-lt); }
+.scan-summary { padding:8px 12px; color:var(--muted); font-size:11px; border-bottom:1px solid var(--border); background:rgba(255,255,255,.018); }
+.signal-tf-tag { display:inline-block; margin-left:5px; padding:1px 5px; border-radius:6px; font-size:9px; background:rgba(91,141,239,.14); color:var(--blue-lt); font-weight:900; }
+.open-signal-list.all-open { max-height:none; }
+@media (max-width:820px){ .signal-tf-grid{grid-template-columns:repeat(4,1fr);} .signal-tf-chip{min-height:38px; display:grid; place-items:center;} }
+
 /* ════════ PROFESSIONAL RESPONSIVE POLISH v2 ════════ */
 :root { --bottom-nav-h: 58px; --safe-bottom: env(safe-area-inset-bottom, 0px); }
 button, .wl-item, .side-tab, .subchart-tab, .symbol-box { touch-action: manipulation; }
@@ -687,7 +700,13 @@ button, .wl-item, .side-tab, .subchart-tab, .symbol-box { touch-action: manipula
     <!-- TAB: Signals -->
     <div class="side-pane" id="paneSignals" style="display:none">
       <div class="panel-head">⚡ Live Signale <span id="signalCtx" class="muted"></span></div>
-      <div class="signal-toolbar"><button id="runSignals">Neu berechnen</button><button id="refreshOpenSignals">Offene prüfen</button><button id="openStats">Statistik</button></div>
+      <div class="signal-toolbar"><button id="runSignals">Scan starten</button><button id="refreshOpenSignals">Offene prüfen</button><button id="openStats">Statistik</button></div>
+      <div class="signal-scope">
+        <div class="signal-scope-head"><span class="signal-scope-title">Aktive Signal-Timeframes</span><span id="signalTfSummary" class="muted"></span></div>
+        <div class="signal-tf-grid" id="signalTfGrid"></div>
+        <div class="signal-scope-hint">Diese Timeframes werden im Hintergrund gescannt. Offene Signale werden timeframe-übergreifend angezeigt, nicht nur vom aktuellen Chart.</div>
+      </div>
+      <div class="scan-summary" id="scanSummary">Noch kein Multi-Timeframe Scan.</div>
       <div class="open-signal-strip"><div class="open-signal-title"><span>Offene Signale</span><span id="openSignalCount">0</span></div><div class="open-signal-list" id="openSignalList"><div class="liq-empty">Lade offene Signale…</div></div></div>
       <div class="signal-list" id="signalList"><div class="liq-empty">Noch keine Signale berechnet.</div></div>
     </div>
@@ -759,6 +778,7 @@ const State = {
   showVP: false,        // Volume Profile Histogramm
   signalLines: [],       // Entry/SL/TP PriceLine-Referenzen
   latestSignals: [],
+  activeSignalTFs: JSON.parse(localStorage.getItem('tradepro.signalTFs') || '["5m","15m","1h"]'),
   chartFullscreen: false,
   showVA: false,        // POC / Value Area Linien
   vpData: null,         // gecachte Volume-Profile-Daten
@@ -1379,17 +1399,38 @@ function drawSignalLines(signal) {
   if (signal.stop_loss) State.signalLines.push(mk(signal.stop_loss, '#ef5350', 'SL'));
   (signal.take_profit || []).forEach((tp, i) => State.signalLines.push(mk(tp, '#26a69a', 'TP' + (i+1), 1)));
 }
+const SIGNAL_TFS = ['1m','3m','5m','15m','1h','4h','1d'];
+function saveSignalTFs() {
+  if (!State.activeSignalTFs.length) State.activeSignalTFs = [State.tf];
+  localStorage.setItem('tradepro.signalTFs', JSON.stringify(State.activeSignalTFs));
+}
+function renderSignalTfControls() {
+  const grid = document.getElementById('signalTfGrid');
+  const summary = document.getElementById('signalTfSummary');
+  if (!grid) return;
+  grid.innerHTML = SIGNAL_TFS.map(tf => `<button class="signal-tf-chip ${State.activeSignalTFs.includes(tf) ? 'active':''}" data-stf="${tf}">${tf}</button>`).join('');
+  if (summary) summary.textContent = State.activeSignalTFs.join(' · ');
+  grid.querySelectorAll('.signal-tf-chip').forEach(btn => btn.onclick = () => {
+    const tf = btn.dataset.stf;
+    if (State.activeSignalTFs.includes(tf)) State.activeSignalTFs = State.activeSignalTFs.filter(x => x !== tf);
+    else State.activeSignalTFs.push(tf);
+    State.activeSignalTFs = SIGNAL_TFS.filter(x => State.activeSignalTFs.includes(x));
+    saveSignalTFs(); renderSignalTfControls(); loadSignals(); loadOpenSignals(false);
+  });
+}
 function renderOpenSignals(payload) {
   const list = document.getElementById('openSignalList');
   const count = document.getElementById('openSignalCount');
-  const rows = payload.signals || [];
+  let rows = payload.signals || [];
+  rows = rows.filter(s => !s.timeframe || State.activeSignalTFs.includes(s.timeframe));
   if (count) count.textContent = rows.length;
   if (!list) return;
+  list.classList.add('all-open');
   if (!rows.length) {
-    list.innerHTML = '<div class="liq-empty">Keine offenen Signale. Neue Setups werden automatisch hier gespeichert.</div>';
+    list.innerHTML = '<div class="liq-empty">Keine offenen Signale in den aktiven Timeframes. Neue Setups werden automatisch hier gespeichert.</div>';
     return;
   }
-  list.innerHTML = rows.slice(0,6).map((s, idx) => `<div class="open-signal-pill" data-osidx="${idx}">
+  list.innerHTML = rows.map((s, idx) => `<div class="open-signal-pill" data-osidx="${idx}">
     <div class="row"><b>${s.symbol} · ${s.timeframe}</b><span class="outcome-chip">${s.outcome || 'OPEN'}</span></div>
     <div class="row"><span>${s.strategy_name}</span><span class="signal-badge ${s.side}">${s.side}</span></div>
     <div class="row"><span>Entry ${fmt.price(s.entry)}</span><span>SL ${fmt.price(s.stop_loss)}</span></div>
@@ -1409,7 +1450,7 @@ async function loadOpenSignals(refresh=true) {
 function renderSignals(data) {
   const list = document.getElementById('signalList');
   const ctx = document.getElementById('signalCtx');
-  if (ctx) ctx.textContent = `${State.symbol} · ${State.tf}`;
+  if (ctx) ctx.textContent = `${State.symbol} · ${State.activeSignalTFs.join(' / ')}`;
   State.latestSignals = data.signals || [];
   if (!State.latestSignals.length) {
     clearSignalLines();
@@ -1421,7 +1462,7 @@ function renderSignals(data) {
     const reasons = (s.reasons || []).slice(0,4).map(r => `<li>${r}</li>`).join('');
     const warns = (s.warnings || []).slice(0,2).map(w => `<li>⚠ ${w}</li>`).join('');
     return `<div class="signal-card ${s.status}" data-sidx="${idx}">
-      <div class="signal-top"><div><div class="signal-name">${s.strategy_name}</div><div class="metric-sub">${s.status.toUpperCase()} · ${s.confidence}% Confidence</div></div><span class="signal-badge ${s.side}">${s.side}</span></div>
+      <div class="signal-top"><div><div class="signal-name">${s.strategy_name}<span class="signal-tf-tag">${s.timeframe}</span></div><div class="metric-sub">${s.status.toUpperCase()} · ${s.confidence}% Confidence</div></div><span class="signal-badge ${s.side}">${s.side}</span></div>
       <div class="signal-meta"><span>Entry <b>${fmt.price(s.entry)}</b></span><span>SL <b>${fmt.price(s.stop_loss)}</b></span><span>TP <b>${tp}</b></span><span>R:R <b>${s.risk_reward || '–'}</b></span></div>
       <ul class="signal-reasons">${reasons}${warns}</ul>
     </div>`;
@@ -1431,14 +1472,19 @@ function renderSignals(data) {
 }
 async function loadSignals() {
   const list = document.getElementById('signalList');
-  if (list) list.innerHTML = '<div class="liq-empty">Signal Engine berechnet Setup…</div>';
+  const summary = document.getElementById('scanSummary');
+  if (list) list.innerHTML = `<div class="liq-empty">Signal Engine scannt ${State.activeSignalTFs.join(' / ')}…</div>`;
+  if (summary) summary.textContent = `Scan aktiv: ${State.symbol} · ${State.activeSignalTFs.join(' / ')} · ${State.exchange}`;
   try {
-    const params = new URLSearchParams({ symbol: State.symbol, tf: State.tf, exchange: State.exchange, persist: 'true' });
-    const data = await fetch('/api/signals/current?' + params.toString()).then(r => r.json());
+    const params = new URLSearchParams({ symbol: State.symbol, timeframes: State.activeSignalTFs.join(','), exchange: State.exchange, persist: 'true' });
+    const data = await fetch('/api/signals/scan?' + params.toString()).then(r => r.json());
     renderSignals(data);
+    const counts = (data.per_timeframe || []).map(x => `${x.timeframe}: ${(x.signals||[]).length}`).join(' · ');
+    if (summary) summary.textContent = `Letzter Scan: ${data.timeframes.join(' / ')}${counts ? ' · ' + counts : ''}`;
     loadOpenSignals(false);
   } catch(e) {
     if (list) list.innerHTML = '<div class="liq-empty">Signal-Fehler: ' + e.message + '</div>';
+    if (summary) summary.textContent = 'Signal-Scan fehlgeschlagen';
   }
 }
 async function loadStrategies() {
@@ -1812,6 +1858,7 @@ fetch('/api/ai/health').then(r=>r.json()).then(d => {
 async function init() {
   await initDropdown();
   await loadWatchlist();
+  renderSignalTfControls();
   loadStrategies();
   loadAnalytics();
   loadOpenSignals(true);

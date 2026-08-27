@@ -31,6 +31,29 @@ async def disable_strategy(strategy_id: str):
 async def current_signals(symbol: str="BTCUSDT", tf: str="5m", exchange: str="binance", persist: bool=True):
     return JSONResponse(await _engine.evaluate(symbol, tf, exchange, persist=persist))
 
+@router.get("/signals/scan")
+async def scan_signals(symbol: str="BTCUSDT", timeframes: str="5m,15m,1h", exchange: str="binance", persist: bool=True):
+    allowed = {"1m", "3m", "5m", "15m", "1h", "4h", "1d"}
+    tfs = []
+    for raw in timeframes.split(','):
+        tf = raw.strip()
+        if tf in allowed and tf not in tfs:
+            tfs.append(tf)
+    if not tfs:
+        tfs = ["5m"]
+    per_tf = []
+    signals = []
+    errors = []
+    for tf in tfs[:7]:
+        try:
+            result = await _engine.evaluate(symbol, tf, exchange, persist=persist)
+            per_tf.append(result)
+            signals.extend(result.get("signals", []))
+        except Exception as e:
+            errors.append({"timeframe": tf, "error": str(e)[:200]})
+    signals.sort(key=lambda x: (x.get("status") == "confirmed", x.get("confidence", 0)), reverse=True)
+    return JSONResponse({"symbol": symbol.upper(), "exchange": exchange, "timeframes": tfs, "signals": signals, "per_timeframe": per_tf, "errors": errors})
+
 @router.get("/signals/history")
 async def signal_history(limit: int=100, strategy_id: str|None=None, symbol: str|None=None):
     return JSONResponse({"signals": db.signal_history(limit=min(limit,500), strategy_id=strategy_id, symbol=symbol)})
