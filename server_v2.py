@@ -13,16 +13,23 @@ Frontend waehlt Exchange. Pro (exchange, symbol, tf) genau EIN Upstream.
 """
 
 import asyncio
+import base64
+import hashlib
+import hmac
 import json
+import os
+import secrets
+import sqlite3
 import time
 from collections import defaultdict, deque
 from pathlib import Path
+from urllib.parse import parse_qs, quote
 from typing import Dict, Set
 
 import httpx
 import websockets
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 import ai_assistant as ai
@@ -30,6 +37,10 @@ import ai_assistant as ai
 BASE_DIR   = Path(__file__).parent
 STATIC_DIR = BASE_DIR / "static"
 STATIC_DIR.mkdir(exist_ok=True)
+DATA_DIR   = BASE_DIR / "data"
+DATA_DIR.mkdir(mode=0o700, exist_ok=True)
+DB_PATH    = DATA_DIR / "tradepro.db"
+SECRET_PATH = DATA_DIR / "auth_secret.key"
 
 # ── Binance ──────────────────────────────────────────────────────────────────
 BN_FUT_REST = "https://fapi.binance.com/fapi/v1"
@@ -50,6 +61,234 @@ DEFAULT_SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT",
                    "DOGEUSDT", "AVAXUSDT", "LINKUSDT"]
 
 app = FastAPI(title="TradePro")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Basic Auth — lokale User + serverseitige Sessions
+# ══════════════════════════════════════════════════════════════════════════════
+SESSION_COOKIE = "tradepro_session"
+SESSION_TTL_SECONDS = int(os.getenv("TRADEPRO_SESSION_TTL_SECONDS", str(7 * 24 * 3600)))
+COOKIE_SECURE = os.getenv("TRADEPRO_COOKIE_SECURE", "false").lower() in {"1", "true", "yes"}
+PBKDF2_ITERATIONS = 310_000
+
+
+def _chmod_private(path: Path):
+    try:
+        path.chmod(0o600)
+    except Exception:
+        pass
+
+
+def auth_secret() -> bytes:
+    if not SECRET_PATH.exists():
+        SECRET_PATH.write_bytes(secrets.token_bytes(32))
+        _chmod_private(SECRET_PATH)
+    return SECRET_PATH.read_bytes()
+
+
+def hash_password(password: str) -> str:
+    salt = secrets.token_bytes(16)
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, PBKDF2_ITERATIONS)
+    return "pbkdf2_sha256${}${}${}".format(
+        PBKDF2_ITERATIONS,
+        base64.urlsafe_b64encode(salt).decode().rstrip("="),
+        base64.urlsafe_b64encode(dk).decode().rstrip("="),
+    )
+
+
+def _b64decode_nopad(value: str) -> bytes:
+    return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+
+
+def verify_password(password: str, stored: str) -> bool:
+    try:
+        algo, iterations, salt_b64, hash_b64 = stored.split("$", 3)
+        if algo != "pbkdf2_sha256":
+            return False
+        salt = _b64decode_nopad(salt_b64)
+        expected = _b64decode_nopad(hash_b64)
+        actual = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, int(iterations))
+        return hmac.compare_digest(actual, expected)
+    except Exception:
+        return False
+
+
+def token_hash(token: str) -> str:
+    return hmac.new(auth_secret(), token.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def db() -> sqlite3.Connection:
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_auth_db():
+    with db() as conn:
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                username TEXT PRIMARY KEY,
+                password_hash TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'user',
+                active INTEGER NOT NULL DEFAULT 1,
+                created_at INTEGER NOT NULL
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS sessions (
+                token_hash TEXT PRIMARY KEY,
+                username TEXT NOT NULL REFERENCES users(username) ON DELETE CASCADE,
+                created_at INTEGER NOT NULL,
+                last_seen INTEGER NOT NULL,
+                expires_at INTEGER NOT NULL,
+                user_agent TEXT
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at)")
+        count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+        if count == 0:
+            password = os.getenv("TRADEPRO_ADMIN_PASSWORD") or secrets.token_urlsafe(24)
+            conn.execute(
+                "INSERT INTO users(username, password_hash, role, active, created_at) VALUES (?, ?, 'admin', 1, ?)",
+                ("admin", hash_password(password), int(time.time())),
+            )
+            if not os.getenv("TRADEPRO_ADMIN_PASSWORD"):
+                pw_file = DATA_DIR / "bootstrap_admin_password.txt"
+                pw_file.write_text(password + "\n")
+                _chmod_private(pw_file)
+
+
+init_auth_db()
+
+
+def get_session_user(token: str | None) -> dict | None:
+    if not token:
+        return None
+    now = int(time.time())
+    th = token_hash(token)
+    with db() as conn:
+        conn.execute("DELETE FROM sessions WHERE expires_at < ?", (now,))
+        row = conn.execute(
+            """
+            SELECT u.username, u.role, u.active, s.expires_at
+            FROM sessions s JOIN users u ON u.username = s.username
+            WHERE s.token_hash = ?
+            """,
+            (th,),
+        ).fetchone()
+        if not row or not row["active"] or row["expires_at"] < now:
+            return None
+        conn.execute("UPDATE sessions SET last_seen = ? WHERE token_hash = ?", (now, th))
+        return {"username": row["username"], "role": row["role"]}
+
+
+def request_user(request: Request) -> dict | None:
+    return get_session_user(request.cookies.get(SESSION_COOKIE))
+
+
+def html_escape(s: str) -> str:
+    return (s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+
+def login_page(error: str = "", next_url: str = "/") -> str:
+    return f"""<!doctype html>
+<html lang=\"de\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">
+<title>TradePro Login</title><style>
+body{{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b0e11;color:#d1d4dc;font-family:-apple-system,Segoe UI,Roboto,sans-serif}}
+.card{{width:min(420px,calc(100vw - 32px));background:#131722;border:1px solid #232838;border-radius:18px;padding:28px;box-shadow:0 24px 80px #0008}}
+h1{{margin:0 0 6px;font-size:26px}}p{{color:#787b86;margin:0 0 22px}}label{{display:block;margin:14px 0 6px;color:#9ca3af;font-size:13px}}
+input{{width:100%;box-sizing:border-box;border:1px solid #2b3245;background:#0b0e11;color:#fff;border-radius:10px;padding:13px 14px;font-size:16px}}
+button{{width:100%;margin-top:20px;border:0;border-radius:10px;padding:13px 16px;background:#2962ff;color:white;font-weight:800;font-size:15px;cursor:pointer}}
+.err{{background:#3a1519;border:1px solid #ef5350;color:#ffd2d2;padding:10px 12px;border-radius:10px;margin-bottom:14px}}
+.hint{{font-size:12px;color:#787b86;margin-top:16px;line-height:1.45}}
+</style></head><body><main class=\"card\"><h1>TradePro</h1><p>Bitte anmelden, um das Terminal zu öffnen.</p>
+{('<div class=\"err\">' + html_escape(error) + '</div>') if error else ''}
+<form method=\"post\" action=\"/auth/login\" autocomplete=\"on\">
+<input type=\"hidden\" name=\"next\" value=\"{html_escape(next_url)}\">
+<label>Benutzer</label><input name=\"username\" autocomplete=\"username\" required autofocus>
+<label>Passwort</label><input name=\"password\" type=\"password\" autocomplete=\"current-password\" required>
+<button>Anmelden</button></form><div class=\"hint\">Session-Cookie ist HttpOnly/SameSite=Lax. Für Secure-Cookies später HTTPS aktivieren.</div></main></body></html>"""
+
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    path = request.url.path
+    public = path in {"/login", "/auth/login", "/healthz"}
+    if not public:
+        user = request_user(request)
+        if not user:
+            if path.startswith("/api/"):
+                return JSONResponse({"error": "authentication_required"}, status_code=401)
+            return RedirectResponse("/login?next=" + quote(str(request.url.path or "/"), safe="/"), status_code=303)
+        request.state.user = user
+    response = await call_next(request)
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("Referrer-Policy", "same-origin")
+    response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+    return response
+
+
+@app.get("/healthz")
+async def healthz():
+    return JSONResponse({"ok": True})
+
+
+@app.get("/login", response_class=HTMLResponse)
+async def login(request: Request, next: str = "/"):
+    if request_user(request):
+        return RedirectResponse(next or "/", status_code=303)
+    return HTMLResponse(login_page(next_url=next or "/"), headers={"Cache-Control": "no-store"})
+
+
+@app.post("/auth/login")
+async def auth_login(request: Request):
+    body = (await request.body()).decode("utf-8", errors="ignore")
+    form = {k: v[0] for k, v in parse_qs(body, keep_blank_values=True).items()}
+    username = form.get("username", "").strip()
+    password = form.get("password", "")
+    next_url = form.get("next", "/") or "/"
+    if not next_url.startswith("/") or next_url.startswith("//"):
+        next_url = "/"
+    with db() as conn:
+        row = conn.execute("SELECT username, password_hash, active FROM users WHERE username = ?", (username,)).fetchone()
+        if not row or not row["active"] or not verify_password(password, row["password_hash"]):
+            return HTMLResponse(login_page("Ungültige Zugangsdaten.", next_url), status_code=401, headers={"Cache-Control": "no-store"})
+        token = secrets.token_urlsafe(32)
+        now = int(time.time())
+        conn.execute(
+            "INSERT INTO sessions(token_hash, username, created_at, last_seen, expires_at, user_agent) VALUES (?, ?, ?, ?, ?, ?)",
+            (token_hash(token), username, now, now, now + SESSION_TTL_SECONDS, request.headers.get("user-agent", "")[:300]),
+        )
+    response = RedirectResponse(next_url, status_code=303)
+    response.set_cookie(
+        SESSION_COOKIE,
+        token,
+        max_age=SESSION_TTL_SECONDS,
+        httponly=True,
+        secure=COOKIE_SECURE,
+        samesite="lax",
+        path="/",
+    )
+    return response
+
+
+@app.post("/auth/logout")
+@app.get("/auth/logout")
+async def auth_logout(request: Request):
+    token = request.cookies.get(SESSION_COOKIE)
+    if token:
+        with db() as conn:
+            conn.execute("DELETE FROM sessions WHERE token_hash = ?", (token_hash(token),))
+    response = RedirectResponse("/login", status_code=303)
+    response.delete_cookie(SESSION_COOKIE, path="/")
+    return response
+
+
+@app.get("/api/auth/me")
+async def auth_me(request: Request):
+    return JSONResponse({"user": getattr(request.state, "user", None)})
 
 
 async def fetch_json(client, url, params=None):
@@ -622,6 +861,10 @@ async def ai_analyze(symbol: str = "BTCUSDT", tf: str = "5m",
 # ══════════════════════════════════════════════════════════════════════════════
 @app.websocket("/ws")
 async def ws_endpoint(ws: WebSocket):
+    token = ws.cookies.get(SESSION_COOKIE)
+    if not get_session_user(token):
+        await ws.close(code=1008)
+        return
     await ws.accept()
     try:
         while True:
