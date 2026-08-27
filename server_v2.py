@@ -522,6 +522,11 @@ class Hub:
 
 hub = Hub()
 
+# Modular signal/strategy/analytics API. Existing market endpoints stay intact;
+# the new package can now grow strategy-by-strategy without bloating server_v2.py.
+from tradepro.api.routes_signals import setup as setup_signal_routes
+app.include_router(setup_signal_routes(hub))
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  REST Proxies (exchange-aware)

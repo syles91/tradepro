@@ -194,6 +194,38 @@ body {
 .liq-usd { font-weight: 600; font-variant-numeric: tabular-nums; }
 .liq-empty { padding: 24px 14px; text-align: center; color: var(--muted); font-size: 12px; }
 
+/* Modular Signal Dashboard */
+.dash-btn { background: var(--panel); border: 1px solid var(--border); color: var(--txt); padding: 7px 10px; border-radius: 7px; font-size: 12px; font-weight: 800; cursor: pointer; }
+.dash-btn:hover, .dash-btn.active { border-color: var(--blue); color: var(--blue-lt); }
+.signal-toolbar { display:flex; gap:8px; padding:10px 12px; border-bottom:1px solid var(--border); }
+.signal-toolbar button { flex:1; background:var(--panel); border:1px solid var(--border); color:var(--txt); border-radius:8px; padding:8px; font-size:12px; font-weight:800; cursor:pointer; }
+.signal-toolbar button:hover { border-color:var(--blue); }
+.signal-list, .strategy-list, .analytics-body { overflow-y:auto; flex:1; padding:10px; }
+.signal-card { border:1px solid var(--border); background:var(--panel); border-radius:12px; padding:11px; margin-bottom:10px; }
+.signal-card.confirmed { border-color:rgba(38,166,154,.55); box-shadow:0 0 0 1px rgba(38,166,154,.08) inset; }
+.signal-card.watch { border-color:rgba(247,201,72,.45); }
+.signal-top { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:6px; }
+.signal-name { font-weight:900; font-size:13px; }
+.signal-badge { padding:3px 7px; border-radius:999px; font-size:10px; font-weight:900; text-transform:uppercase; }
+.signal-badge.long { background:rgba(38,166,154,.18); color:var(--green-br); }
+.signal-badge.short { background:rgba(239,83,80,.18); color:var(--red-br); }
+.signal-meta { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:8px 0; font-size:11px; color:var(--muted); }
+.signal-meta b { color:var(--txt); font-variant-numeric:tabular-nums; }
+.signal-reasons { margin-top:8px; padding-left:16px; color:#aeb6c7; font-size:11px; line-height:1.45; }
+.strategy-card { border:1px solid var(--border); background:var(--panel); border-radius:12px; padding:11px; margin-bottom:10px; }
+.strategy-row { display:flex; justify-content:space-between; gap:8px; align-items:center; }
+.strategy-title { font-weight:900; }
+.strategy-desc { color:var(--muted); font-size:11px; line-height:1.45; margin-top:5px; }
+.toggle { border:1px solid var(--border); background:var(--bg); color:var(--txt); border-radius:999px; padding:5px 9px; font-size:11px; cursor:pointer; }
+.toggle.on { background:rgba(38,166,154,.18); color:var(--green-br); border-color:rgba(38,166,154,.45); }
+.kpi-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
+.kpi { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:10px; }
+.kpi .v { font-size:20px; font-weight:900; font-variant-numeric:tabular-nums; }
+.kpi .l { font-size:10px; color:var(--muted); text-transform:uppercase; margin-top:3px; }
+.analytics-table { width:100%; border-collapse:collapse; font-size:11px; }
+.analytics-table th,.analytics-table td { padding:7px 5px; border-bottom:1px solid var(--border); text-align:left; }
+.analytics-table th { color:var(--muted); font-size:10px; text-transform:uppercase; }
+
 /* Sidebar Tabs */
 .side-tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .side-tab { flex: 1; text-align: center; padding: 10px; font-size: 12px; font-weight: 700; color: var(--muted); cursor: pointer; transition: all .15s; }
@@ -347,6 +379,7 @@ body {
   </div>
   <div class="topbar-right">
     <div class="conn-dot" id="connDot" title="Verbindung"></div>
+    <button class="dash-btn" id="signalRefreshTop" title="Signal Engine ausführen">⚡ Signale</button>
     <button class="icon-btn ai-trigger" id="aiTrigger" title="KI-Assistent">🤖</button>
     <a href="/guide" class="icon-btn" title="Guide" style="text-decoration:none">📚</a>
   </div>
@@ -399,6 +432,9 @@ body {
     <div class="side-tabs">
       <div class="side-tab active" data-tab="futures">Futures</div>
       <div class="side-tab" data-tab="orderbook">Orderbook</div>
+      <div class="side-tab" data-tab="signals">Signale</div>
+      <div class="side-tab" data-tab="strategies">Strategien</div>
+      <div class="side-tab" data-tab="stats">Statistik</div>
     </div>
 
     <!-- TAB: Futures -->
@@ -457,6 +493,25 @@ body {
       <div class="panel-head">Depth Chart</div>
       <div class="depth-wrap"><canvas id="depthCanvas"></canvas></div>
     </div>
+
+    <!-- TAB: Signals -->
+    <div class="side-pane" id="paneSignals" style="display:none">
+      <div class="panel-head">⚡ Live Signale <span id="signalCtx" class="muted"></span></div>
+      <div class="signal-toolbar"><button id="runSignals">Neu berechnen</button><button id="openStats">Statistik</button></div>
+      <div class="signal-list" id="signalList"><div class="liq-empty">Noch keine Signale berechnet.</div></div>
+    </div>
+
+    <!-- TAB: Strategies -->
+    <div class="side-pane" id="paneStrategies" style="display:none">
+      <div class="panel-head">🧩 Strategie Plugins</div>
+      <div class="strategy-list" id="strategyList"><div class="liq-empty">Lade Strategien…</div></div>
+    </div>
+
+    <!-- TAB: Statistics -->
+    <div class="side-pane" id="paneStats" style="display:none">
+      <div class="panel-head">📊 Signal Statistik</div>
+      <div class="analytics-body" id="analyticsBody"><div class="liq-empty">Noch keine Statistik geladen.</div></div>
+    </div>
   </div>
 </div>
 
@@ -510,6 +565,8 @@ const State = {
   ws: null,
   reconnectTimer: null,
   showVP: false,        // Volume Profile Histogramm
+  signalLines: [],       // Entry/SL/TP PriceLine-Referenzen
+  latestSignals: [],
   showVA: false,        // POC / Value Area Linien
   vpData: null,         // gecachte Volume-Profile-Daten
   vpLines: [],          // PriceLine-Referenzen (POC/VAH/VAL)
@@ -1081,6 +1138,85 @@ function addLiqRow(liq, prepend) {
   else feed.appendChild(row);
 }
 
+
+// ════════════════════════════════════════════════════════════════════════════
+//  MODULAR SIGNAL DASHBOARD
+// ════════════════════════════════════════════════════════════════════════════
+function clearSignalLines() {
+  State.signalLines.forEach(l => { try { candleSeries.removePriceLine(l); } catch(e){} });
+  State.signalLines = [];
+}
+function drawSignalLines(signal) {
+  clearSignalLines();
+  if (!signal || !signal.entry) return;
+  const mk = (price, color, title, style=2) => candleSeries.createPriceLine({ price, color, lineWidth: 2, lineStyle: style, axisLabelVisible: true, title });
+  State.signalLines.push(mk(signal.entry, signal.side === 'long' ? '#26a69a' : '#ef5350', 'ENTRY'));
+  if (signal.stop_loss) State.signalLines.push(mk(signal.stop_loss, '#ef5350', 'SL'));
+  (signal.take_profit || []).forEach((tp, i) => State.signalLines.push(mk(tp, '#26a69a', 'TP' + (i+1), 1)));
+}
+function renderSignals(data) {
+  const list = document.getElementById('signalList');
+  const ctx = document.getElementById('signalCtx');
+  if (ctx) ctx.textContent = `${State.symbol} · ${State.tf}`;
+  State.latestSignals = data.signals || [];
+  if (!State.latestSignals.length) {
+    clearSignalLines();
+    list.innerHTML = '<div class="liq-empty">Kein aktives Setup. Strategien laufen, aber Bedingungen sind noch nicht erfüllt.</div>';
+    return;
+  }
+  list.innerHTML = State.latestSignals.map((s, idx) => {
+    const tp = (s.take_profit || []).map(x => fmt.price(x)).join(' / ') || '–';
+    const reasons = (s.reasons || []).slice(0,4).map(r => `<li>${r}</li>`).join('');
+    const warns = (s.warnings || []).slice(0,2).map(w => `<li>⚠ ${w}</li>`).join('');
+    return `<div class="signal-card ${s.status}" data-sidx="${idx}">
+      <div class="signal-top"><div><div class="signal-name">${s.strategy_name}</div><div class="metric-sub">${s.status.toUpperCase()} · ${s.confidence}% Confidence</div></div><span class="signal-badge ${s.side}">${s.side}</span></div>
+      <div class="signal-meta"><span>Entry <b>${fmt.price(s.entry)}</b></span><span>SL <b>${fmt.price(s.stop_loss)}</b></span><span>TP <b>${tp}</b></span><span>R:R <b>${s.risk_reward || '–'}</b></span></div>
+      <ul class="signal-reasons">${reasons}${warns}</ul>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('.signal-card').forEach(card => card.onclick = () => drawSignalLines(State.latestSignals[Number(card.dataset.sidx)]));
+  drawSignalLines(State.latestSignals[0]);
+}
+async function loadSignals() {
+  const list = document.getElementById('signalList');
+  if (list) list.innerHTML = '<div class="liq-empty">Signal Engine berechnet Setup…</div>';
+  try {
+    const params = new URLSearchParams({ symbol: State.symbol, tf: State.tf, exchange: State.exchange, persist: 'true' });
+    const data = await fetch('/api/signals/current?' + params.toString()).then(r => r.json());
+    renderSignals(data);
+  } catch(e) {
+    if (list) list.innerHTML = '<div class="liq-empty">Signal-Fehler: ' + e.message + '</div>';
+  }
+}
+async function loadStrategies() {
+  const el = document.getElementById('strategyList');
+  try {
+    const data = await fetch('/api/strategies').then(r => r.json());
+    el.innerHTML = (data.strategies || []).map(s => `<div class="strategy-card">
+      <div class="strategy-row"><div class="strategy-title">${s.name}</div><button class="toggle ${s.enabled ? 'on':''}" data-sid="${s.id}" data-enabled="${s.enabled}">${s.enabled ? 'Aktiv' : 'Aus'}</button></div>
+      <div class="strategy-desc">${s.description}</div>
+    </div>`).join('') || '<div class="liq-empty">Keine Strategien registriert.</div>';
+    el.querySelectorAll('.toggle').forEach(btn => btn.onclick = async () => {
+      const enabled = btn.dataset.enabled === '1';
+      await fetch(`/api/strategies/${btn.dataset.sid}/${enabled ? 'disable' : 'enable'}`, { method: 'POST' });
+      loadStrategies(); loadSignals(); loadAnalytics();
+    });
+  } catch(e) { el.innerHTML = '<div class="liq-empty">Strategien konnten nicht geladen werden.</div>'; }
+}
+async function loadAnalytics() {
+  const el = document.getElementById('analyticsBody');
+  try {
+    const a = await fetch('/api/analytics/overview').then(r => r.json());
+    const rows = (a.by_strategy || []).map(r => `<tr><td>${r.strategy_name}</td><td>${r.signals}</td><td>${Number(r.avg_confidence||0).toFixed(1)}%</td><td>${r.longs||0}/${r.shorts||0}</td></tr>`).join('');
+    el.innerHTML = `<div class="kpi-grid">
+      <div class="kpi"><div class="v">${a.total_signals}</div><div class="l">Signale</div></div>
+      <div class="kpi"><div class="v">${a.confirmed_signals}</div><div class="l">Confirmed</div></div>
+      <div class="kpi"><div class="v">${a.watch_signals}</div><div class="l">Watch</div></div>
+      <div class="kpi"><div class="v">${a.avg_confidence}%</div><div class="l">Ø Confidence</div></div>
+    </div><table class="analytics-table"><thead><tr><th>Strategie</th><th>N</th><th>Ø Conf</th><th>L/S</th></tr></thead><tbody>${rows}</tbody></table>`;
+  } catch(e) { el.innerHTML = '<div class="liq-empty">Statistik konnte nicht geladen werden.</div>'; }
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 //  ACTIONS
 // ════════════════════════════════════════════════════════════════════════════
@@ -1122,6 +1258,7 @@ function reloadAll() {
   loadLiquidations();
   if (obActive) loadOrderbook();
   if (State.showVP || State.showVA) loadVolumeProfile();
+  loadSignals();
   const hint = State.exchange === 'binance'
     ? 'Binance Futures-WS hier geblockt –<br><span style="font-size:10px">wechsle zu Bybit für Live-Liquidationen</span>'
     : 'Warte auf Liquidationen…<br><span style="font-size:10px">erscheinen live sobald welche passieren</span>';
@@ -1195,8 +1332,14 @@ document.querySelectorAll('.side-tab').forEach(t => t.onclick = () => {
   document.querySelectorAll('.side-tab').forEach(x => x.classList.toggle('active', x === t));
   document.getElementById('paneFutures').style.display = tab === 'futures' ? 'flex' : 'none';
   document.getElementById('paneOrderbook').style.display = tab === 'orderbook' ? 'flex' : 'none';
+  document.getElementById('paneSignals').style.display = tab === 'signals' ? 'flex' : 'none';
+  document.getElementById('paneStrategies').style.display = tab === 'strategies' ? 'flex' : 'none';
+  document.getElementById('paneStats').style.display = tab === 'stats' ? 'flex' : 'none';
   obActive = tab === 'orderbook';
   if (obActive) { loadOrderbook(); setTimeout(drawDepthChart, 60); }
+  if (tab === 'signals') loadSignals();
+  if (tab === 'strategies') loadStrategies();
+  if (tab === 'stats') loadAnalytics();
 });
 // Orderbook-Polling (nur wenn Tab aktiv)
 setInterval(() => { if (obActive) loadOrderbook(); }, 2000);
@@ -1210,6 +1353,10 @@ function switchExchange(ex) {
   reloadAll();
   subscribe();
 }
+
+document.getElementById('runSignals').onclick = loadSignals;
+document.getElementById('signalRefreshTop').onclick = () => { loadSignals(); document.querySelector('[data-tab=\"signals\"]').click(); };
+document.getElementById('openStats').onclick = () => document.querySelector('[data-tab=\"stats\"]').click();
 
 // ════════════════════════════════════════════════════════════════════════════
 //  MOBILE NAV
@@ -1357,6 +1504,8 @@ fetch('/api/ai/health').then(r=>r.json()).then(d => {
 async function init() {
   await initDropdown();
   await loadWatchlist();
+  loadStrategies();
+  loadAnalytics();
   reloadAll();
   connectWS();
   resizeCharts();
