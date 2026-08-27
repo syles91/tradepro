@@ -157,6 +157,13 @@ def init_auth_db():
                 pw_file = DATA_DIR / "bootstrap_admin_password.txt"
                 pw_file.write_text(password + "\n")
                 _chmod_private(pw_file)
+        # Demo user: local paper-trading sandbox account, no real exchange execution.
+        # Password can be overridden with TRADEPRO_DEMO_PASSWORD.
+        if not conn.execute("SELECT username FROM users WHERE username='demo'").fetchone():
+            conn.execute(
+                "INSERT INTO users(username, password_hash, role, active, created_at) VALUES (?, ?, 'demo', 1, ?)",
+                ("demo", hash_password(os.getenv("TRADEPRO_DEMO_PASSWORD", "demo")), int(time.time())),
+            )
 
 
 init_auth_db()
@@ -200,6 +207,7 @@ body{{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b0e
 h1{{margin:0 0 6px;font-size:26px}}p{{color:#787b86;margin:0 0 22px}}label{{display:block;margin:14px 0 6px;color:#9ca3af;font-size:13px}}
 input{{width:100%;box-sizing:border-box;border:1px solid #2b3245;background:#0b0e11;color:#fff;border-radius:10px;padding:13px 14px;font-size:16px}}
 button{{width:100%;margin-top:20px;border:0;border-radius:10px;padding:13px 16px;background:#2962ff;color:white;font-weight:800;font-size:15px;cursor:pointer}}
+.demo{{background:#20283a;border:1px solid #33405a;margin-top:10px}}
 .err{{background:#3a1519;border:1px solid #ef5350;color:#ffd2d2;padding:10px 12px;border-radius:10px;margin-bottom:14px}}
 .hint{{font-size:12px;color:#787b86;margin-top:16px;line-height:1.45}}
 </style></head><body><main class=\"card\"><h1>TradePro</h1><p>Bitte anmelden, um das Terminal zu öffnen.</p>
@@ -208,7 +216,9 @@ button{{width:100%;margin-top:20px;border:0;border-radius:10px;padding:13px 16px
 <input type=\"hidden\" name=\"next\" value=\"{html_escape(next_url)}\">
 <label>Benutzer</label><input name=\"username\" autocomplete=\"username\" required autofocus>
 <label>Passwort</label><input name=\"password\" type=\"password\" autocomplete=\"current-password\" required>
-<button>Anmelden</button></form><div class=\"hint\">Session-Cookie ist HttpOnly/SameSite=Lax. Für Secure-Cookies später HTTPS aktivieren.</div></main></body></html>"""
+<button>Anmelden</button></form>
+<form method=\"post\" action=\"/auth/login\"><input type=\"hidden\" name=\"next\" value=\"{html_escape(next_url)}\"><input type=\"hidden\" name=\"username\" value=\"demo\"><input type=\"hidden\" name=\"password\" value=\"demo\"><button class=\"demo\">Demo-Konto öffnen</button></form>
+<div class=\"hint\">Demo-Konto nutzt nur Paper-Trading mit virtuellem Kapital. Keine echten Orders. Session-Cookie ist HttpOnly/SameSite=Lax.</div></main></body></html>"""
 
 
 @app.middleware("http")
@@ -289,6 +299,43 @@ async def auth_logout(request: Request):
 @app.get("/api/auth/me")
 async def auth_me(request: Request):
     return JSONResponse({"user": getattr(request.state, "user", None)})
+
+@app.get("/api/users")
+async def api_users(request: Request):
+    u = getattr(request.state, "user", {})
+    if u.get("role") != "admin":
+        return JSONResponse({"error": "admin_required"}, status_code=403)
+    with db() as conn:
+        rows = [dict(r) for r in conn.execute("SELECT username, role, active, created_at FROM users ORDER BY created_at DESC")]
+    return JSONResponse({"users": rows})
+
+@app.post("/api/users")
+async def api_create_user(request: Request):
+    u = getattr(request.state, "user", {})
+    if u.get("role") != "admin":
+        return JSONResponse({"error": "admin_required"}, status_code=403)
+    data = await request.json()
+    username = str(data.get("username", "")).strip().lower()
+    password = str(data.get("password", ""))
+    role = str(data.get("role", "user")).strip().lower()
+    if role not in {"admin", "user", "demo"}: role = "user"
+    if not username or len(username) < 3 or not password or len(password) < 4:
+        return JSONResponse({"error": "username/password too short"}, status_code=400)
+    with db() as conn:
+        try:
+            conn.execute("INSERT INTO users(username, password_hash, role, active, created_at) VALUES (?, ?, ?, 1, ?)", (username, hash_password(password), role, int(time.time())))
+        except sqlite3.IntegrityError:
+            return JSONResponse({"error": "user_exists"}, status_code=409)
+    return JSONResponse({"ok": True, "username": username, "role": role})
+
+@app.post("/api/users/{username}/active")
+async def api_set_user_active(username: str, request: Request, active: bool=True):
+    u = getattr(request.state, "user", {})
+    if u.get("role") != "admin":
+        return JSONResponse({"error": "admin_required"}, status_code=403)
+    with db() as conn:
+        conn.execute("UPDATE users SET active=? WHERE username=?", (1 if active else 0, username))
+    return JSONResponse({"ok": True, "username": username, "active": active})
 
 
 async def fetch_json(client, url, params=None):
@@ -525,7 +572,9 @@ hub = Hub()
 # Modular signal/strategy/analytics API. Existing market endpoints stay intact;
 # the new package can now grow strategy-by-strategy without bloating server_v2.py.
 from tradepro.api.routes_signals import setup as setup_signal_routes
+from tradepro.api.routes_account import router as account_router
 app.include_router(setup_signal_routes(hub))
+app.include_router(account_router)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

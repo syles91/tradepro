@@ -68,9 +68,9 @@ async def backtest_run_list(limit: int=20):
     return JSONResponse({"runs": db.backtest_runs(limit=min(limit, 100))})
 
 @router.post("/backtest/run")
-async def backtest_run(strategy_id: str="trend_pullback", symbol: str="BTCUSDT", tf: str="5m", exchange: str="binance", limit: int=1000, horizon: int=96, min_status: str="watch"):
+async def backtest_run(strategy_id: str="trend_pullback", symbol: str="BTCUSDT", tf: str="5m", exchange: str="binance", limit: int=1000, horizon: int=96, min_status: str="watch", min_confidence: float=0, fee_bps: float=4, slippage_bps: float=2):
     try:
-        return JSONResponse(await run_backtest(strategy_id, symbol, tf, exchange, limit, horizon, min_status, persist=True))
+        return JSONResponse(await run_backtest(strategy_id, symbol, tf, exchange, limit, horizon, min_status, persist=True, min_confidence=min_confidence, fee_bps=fee_bps, slippage_bps=slippage_bps))
     except Exception as e:
         return JSONResponse({"error": str(e)[:300]}, status_code=400)
 

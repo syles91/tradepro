@@ -432,6 +432,28 @@ body.chart-fullscreen #chartFullscreenBtn { width: auto; min-width: 58px; paddin
 .open-signal-list.all-open { max-height:none; }
 @media (max-width:820px){ .signal-tf-grid{grid-template-columns:repeat(4,1fr);} .signal-tf-chip{min-height:38px; display:grid; place-items:center;} }
 
+
+/* Settings / Account Menu */
+.settings-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,.58); z-index:520; backdrop-filter:blur(3px); }
+.settings-backdrop.show { display:block; }
+.settings-modal { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); width:min(720px,calc(100vw - 24px)); max-height:min(820px,92dvh); background:var(--bg2); border:1px solid var(--border); border-radius:18px; z-index:530; box-shadow:0 30px 90px rgba(0,0,0,.62); overflow:hidden; }
+.settings-modal.show { display:flex; flex-direction:column; }
+.settings-head { display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid var(--border); }
+.settings-body { overflow:auto; padding:14px; display:grid; gap:12px; }
+.settings-section { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:13px; }
+.settings-section h3 { font-size:14px; margin:0 0 9px; }
+.settings-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.settings-grid label { display:flex; flex-direction:column; gap:5px; color:var(--muted); font-size:10px; text-transform:uppercase; font-weight:900; }
+.settings-grid input,.settings-grid select { background:var(--bg); border:1px solid var(--border); color:var(--txt); border-radius:9px; padding:10px; font-size:13px; }
+.settings-actions { display:flex; gap:8px; margin-top:10px; }
+.settings-actions button,.paper-action { flex:1; background:rgba(41,98,255,.16); border:1px solid rgba(91,141,239,.45); color:var(--blue-lt); border-radius:9px; padding:10px; font-weight:900; cursor:pointer; }
+.settings-actions .danger { background:rgba(239,83,80,.12); border-color:rgba(239,83,80,.4); color:var(--red-br); }
+.user-pill { font-size:12px; color:var(--muted); }
+.paper-kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.paper-pos { border:1px solid var(--border); border-radius:10px; padding:9px; margin-top:8px; background:rgba(255,255,255,.02); font-size:12px; }
+.signal-paper-btn { margin-top:8px; width:100%; border:1px solid rgba(91,141,239,.45); background:rgba(41,98,255,.12); color:var(--blue-lt); border-radius:8px; padding:8px; font-weight:900; cursor:pointer; }
+@media(max-width:820px){ .settings-modal{inset:8px; top:auto; left:auto; transform:none; width:auto; max-height:none;} .settings-grid{grid-template-columns:1fr;} .paper-kpis{grid-template-columns:1fr 1fr;} }
+
 /* ════════ PROFESSIONAL RESPONSIVE POLISH v2 ════════ */
 :root { --bottom-nav-h: 58px; --safe-bottom: env(safe-area-inset-bottom, 0px); }
 button, .wl-item, .side-tab, .subchart-tab, .symbol-box { touch-action: manipulation; }
@@ -581,6 +603,7 @@ button, .wl-item, .side-tab, .subchart-tab, .symbol-box { touch-action: manipula
   <div class="topbar-right">
     <div class="conn-dot" id="connDot" title="Verbindung"></div>
     <button class="dash-btn" id="signalRefreshTop" title="Signal Engine ausführen">⚡ Signale</button>
+    <button class="icon-btn" id="settingsBtn" title="Einstellungen & Demo-Konto">⚙</button>
     <button class="icon-btn ai-trigger" id="aiTrigger" title="KI-Assistent">🤖</button>
     <a href="/guide" class="icon-btn" title="Guide" style="text-decoration:none">📚</a>
   </div>
@@ -725,6 +748,45 @@ button, .wl-item, .side-tab, .subchart-tab, .symbol-box { touch-action: manipula
   </div>
 </div>
 
+
+<!-- SETTINGS / ACCOUNT MODAL -->
+<div class="settings-backdrop" id="settingsBackdrop"></div>
+<div class="settings-modal" id="settingsModal">
+  <div class="settings-head"><div><b>⚙ Einstellungen</b><div class="user-pill" id="settingsUser">Konto lädt…</div></div><button class="ai-close" id="settingsClose">✕</button></div>
+  <div class="settings-body">
+    <div class="settings-section">
+      <h3>Signal Engine</h3>
+      <div class="signal-tf-grid" id="settingsTfGrid"></div>
+      <div class="settings-grid" style="margin-top:10px">
+        <label>Min. Confidence<input id="setMinConfidence" type="number" min="0" max="100" value="65"></label>
+        <label>Auto Demo-Paper<select id="setAutoPaper"><option value="false">Aus</option><option value="true">An</option></select></label>
+      </div>
+    </div>
+    <div class="settings-section">
+      <h3>Demo Konto / Paper Trading</h3>
+      <div class="paper-kpis">
+        <div class="kpi"><div class="v" id="paperBalance">–</div><div class="l">Balance</div></div>
+        <div class="kpi"><div class="v" id="paperOpen">–</div><div class="l">Offene Pos.</div></div>
+        <div class="kpi"><div class="v" id="paperPnl">–</div><div class="l">Realized PnL</div></div>
+      </div>
+      <div class="settings-grid" style="margin-top:10px">
+        <label>Startkapital<input id="setDemoBalance" type="number" value="10000"></label>
+        <label>Risiko pro Trade %<input id="setRiskTrade" type="number" step="0.1" value="1"></label>
+        <label>Max Leverage<input id="setMaxLev" type="number" step="0.5" value="3"></label>
+      </div>
+      <div id="paperPositions"></div>
+      <div class="settings-actions"><button id="saveSettingsBtn">Speichern</button><button class="danger" id="resetPaperBtn">Demo zurücksetzen</button></div>
+    </div>
+    <div class="settings-section" id="usersSection" style="display:none">
+      <h3>User verwalten</h3>
+      <div class="settings-grid"><label>Username<input id="newUsername" placeholder="trader2"></label><label>Passwort<input id="newPassword" type="password" placeholder="Passwort"></label></div>
+      <div class="settings-actions"><button id="createUserBtn">User anlegen</button></div>
+      <div id="userList" class="strategy-desc"></div>
+    </div>
+    <div class="settings-section"><a href="/auth/logout" class="paper-action" style="display:block;text-align:center;text-decoration:none">Logout</a></div>
+  </div>
+</div>
+
 <!-- MOBILE NAV -->
 <div class="mobile-nav">
   <button class="mnav-btn" id="mnWatch"><span class="mnav-icon">📋</span>Märkte</button>
@@ -779,6 +841,8 @@ const State = {
   signalLines: [],       // Entry/SL/TP PriceLine-Referenzen
   latestSignals: [],
   activeSignalTFs: JSON.parse(localStorage.getItem('tradepro.signalTFs') || '["5m","15m","1h"]'),
+  user: null,
+  settings: null,
   chartFullscreen: false,
   showVA: false,        // POC / Value Area Linien
   vpData: null,         // gecachte Volume-Profile-Daten
@@ -1465,9 +1529,11 @@ function renderSignals(data) {
       <div class="signal-top"><div><div class="signal-name">${s.strategy_name}<span class="signal-tf-tag">${s.timeframe}</span></div><div class="metric-sub">${s.status.toUpperCase()} · ${s.confidence}% Confidence</div></div><span class="signal-badge ${s.side}">${s.side}</span></div>
       <div class="signal-meta"><span>Entry <b>${fmt.price(s.entry)}</b></span><span>SL <b>${fmt.price(s.stop_loss)}</b></span><span>TP <b>${tp}</b></span><span>R:R <b>${s.risk_reward || '–'}</b></span></div>
       <ul class="signal-reasons">${reasons}${warns}</ul>
+      <button class="signal-paper-btn" data-paper-idx="${idx}">Demo Trade öffnen</button>
     </div>`;
   }).join('');
   list.querySelectorAll('.signal-card').forEach(card => card.onclick = () => drawSignalLines(State.latestSignals[Number(card.dataset.sidx)]));
+  list.querySelectorAll('.signal-paper-btn').forEach(btn => btn.onclick = async (e) => { e.stopPropagation(); await openPaperFromSignal(State.latestSignals[Number(btn.dataset.paperIdx)]); });
   drawSignalLines(State.latestSignals[0]);
 }
 async function loadSignals() {
@@ -1541,7 +1607,10 @@ async function runBacktest() {
     exchange: State.exchange,
     limit: document.getElementById('btLimit').value || '1000',
     horizon: '96',
-    min_status: 'watch'
+    min_status: 'watch',
+    min_confidence: String(State.settings?.min_signal_confidence || 0),
+    fee_bps: '4',
+    slippage_bps: '2'
   });
   try {
     const run = await fetch('/api/backtest/run?' + params.toString(), { method:'POST' }).then(r => r.json());
@@ -1731,6 +1800,51 @@ document.getElementById('mnSignals').onclick = () => showMobilePanel('signals');
 document.getElementById('mnAI').onclick = () => aiOpen();
 document.getElementById('backdrop').onclick = () => showMobilePanel('chart');
 
+
+// ════════════════════════════════════════════════════════════════════════════
+//  SETTINGS / ACCOUNT / DEMO PAPER
+// ════════════════════════════════════════════════════════════════════════════
+function settingsOpen(){ document.getElementById('settingsModal').classList.add('show'); document.getElementById('settingsBackdrop').classList.add('show'); loadSettingsPanel(); }
+function settingsClose(){ document.getElementById('settingsModal').classList.remove('show'); document.getElementById('settingsBackdrop').classList.remove('show'); }
+function renderSettingsTfGrid(){
+  const grid=document.getElementById('settingsTfGrid'); if(!grid) return;
+  grid.innerHTML = SIGNAL_TFS.map(tf => `<button class="signal-tf-chip ${State.activeSignalTFs.includes(tf)?'active':''}" data-settf="${tf}">${tf}</button>`).join('');
+  grid.querySelectorAll('.signal-tf-chip').forEach(btn => btn.onclick=()=>{ const tf=btn.dataset.settf; State.activeSignalTFs = State.activeSignalTFs.includes(tf) ? State.activeSignalTFs.filter(x=>x!==tf) : [...State.activeSignalTFs, tf]; State.activeSignalTFs=SIGNAL_TFS.filter(x=>State.activeSignalTFs.includes(x)); saveSignalTFs(); renderSignalTfControls(); renderSettingsTfGrid(); });
+}
+async function loadSettingsPanel(){
+  try { const me=await fetch('/api/auth/me').then(r=>r.json()); State.user=me.user; document.getElementById('settingsUser').textContent=`${me.user.username} · ${me.user.role}`; document.getElementById('usersSection').style.display = me.user.role==='admin' ? 'block':'none'; } catch(e){}
+  try { const st=await fetch('/api/settings').then(r=>r.json()); State.settings=st; State.activeSignalTFs=st.signal_timeframes || State.activeSignalTFs; saveSignalTFs(); renderSignalTfControls(); renderSettingsTfGrid(); document.getElementById('setMinConfidence').value=st.min_signal_confidence ?? 65; document.getElementById('setAutoPaper').value=String(!!st.auto_paper); document.getElementById('setDemoBalance').value=st.demo_balance ?? 10000; document.getElementById('setRiskTrade').value=st.risk_per_trade ?? 1; document.getElementById('setMaxLev').value=st.max_leverage ?? 3; } catch(e){}
+  await loadPaperAccount(); await loadUsers();
+}
+async function saveSettingsPanel(){
+  const payload={ signal_timeframes: State.activeSignalTFs, auto_paper: document.getElementById('setAutoPaper').value==='true', min_signal_confidence: Number(document.getElementById('setMinConfidence').value||65), demo_balance: Number(document.getElementById('setDemoBalance').value||10000), risk_per_trade: Number(document.getElementById('setRiskTrade').value||1), max_leverage: Number(document.getElementById('setMaxLev').value||3) };
+  State.settings = await fetch('/api/settings',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)}).then(r=>r.json());
+  State.activeSignalTFs=State.settings.signal_timeframes || State.activeSignalTFs; saveSignalTFs(); renderSignalTfControls(); loadSignals(); loadPaperAccount();
+}
+async function loadPaperAccount(){
+  try { const p=await fetch('/api/paper/account').then(r=>r.json()); document.getElementById('paperBalance').textContent=fmt.usd(p.account.balance); document.getElementById('paperOpen').textContent=p.open_positions.length; document.getElementById('paperPnl').textContent=fmt.usd(p.realized_pnl||0); const box=document.getElementById('paperPositions'); box.innerHTML=(p.open_positions||[]).map(pos=>`<div class="paper-pos"><b>${pos.symbol} ${pos.side}</b> · ${Number(pos.qty).toFixed(4)} @ ${fmt.price(pos.entry)}<br><span class="muted">SL ${fmt.price(pos.stop_loss)} · ${pos.timeframe}</span></div>`).join('') || '<div class="liq-empty">Keine offenen Demo-Positionen.</div>'; } catch(e){}
+}
+async function openPaperFromSignal(signal){
+  if(!signal) return;
+  const r=await fetch('/api/paper/open',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({signal})}).then(r=>r.json());
+  if(r.error) alert('Demo Trade Fehler: '+r.error); else { settingsOpen(); await loadPaperAccount(); }
+}
+async function loadUsers(){
+  const el=document.getElementById('userList'); if(!el || State.user?.role!=='admin') return;
+  try { const d=await fetch('/api/users').then(r=>r.json()); el.innerHTML=(d.users||[]).map(u=>`${u.username} · ${u.role} · ${u.active?'aktiv':'aus'}`).join('<br>'); } catch(e){ el.textContent='Userliste nur für Admin.'; }
+}
+async function createUser(){
+  const username=document.getElementById('newUsername').value.trim(); const password=document.getElementById('newPassword').value;
+  const r=await fetch('/api/users',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({username,password,role:'user'})}).then(r=>r.json());
+  if(r.error) alert('User Fehler: '+r.error); else { document.getElementById('newUsername').value=''; document.getElementById('newPassword').value=''; loadUsers(); }
+}
+document.getElementById('settingsBtn').onclick=settingsOpen;
+document.getElementById('settingsClose').onclick=settingsClose;
+document.getElementById('settingsBackdrop').onclick=settingsClose;
+document.getElementById('saveSettingsBtn').onclick=saveSettingsPanel;
+document.getElementById('resetPaperBtn').onclick=async()=>{ await fetch('/api/paper/reset?balance='+encodeURIComponent(document.getElementById('setDemoBalance').value||10000),{method:'POST'}); loadPaperAccount(); };
+document.getElementById('createUserBtn').onclick=createUser;
+
 // ════════════════════════════════════════════════════════════════════════════
 //  INIT
 // ════════════════════════════════════════════════════════════════════════════
@@ -1858,6 +1972,7 @@ fetch('/api/ai/health').then(r=>r.json()).then(d => {
 async function init() {
   await initDropdown();
   await loadWatchlist();
+  await loadSettingsPanel();
   renderSignalTfControls();
   loadStrategies();
   loadAnalytics();
