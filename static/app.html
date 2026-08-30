@@ -5,6 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#0b0e11">
 <title>TradePro — Crypto Terminal</title>
+
+<!-- PWA: Installation als Android-App + Fullscreen ohne Browser-UI -->
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TradePro">
+<meta name="application-name" content="TradePro">
 <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>
 :root {
@@ -488,9 +498,100 @@ body.chart-fullscreen #chartFullscreenBtn { width: auto; min-width: 58px; paddin
 .ind-modal-foot { display: flex; gap: 8px; justify-content: flex-end; padding: 12px 16px; border-top: 1px solid var(--border); }
 .ind-btn { border-radius: 9px; padding: 8px 16px; font-size: 12px; font-weight: 800; cursor: pointer; border: 1px solid var(--border); background: var(--panel); color: var(--txt); }
 .ind-btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+/* ── Indikator-Panel: Tablet & Mobile ─────────────────────────────────── */
 @media (max-width: 900px) {
-  .ind-pane { height: 108px; }
+  /* Aktions-Buttons ohne Hover immer sichtbar (Touch kennt kein :hover) */
   .ind-actions { opacity: 1; }
+  .ind-ic { font-size: 13px; padding: 4px 6px; min-width: 26px; min-height: 26px; }
+  .ind-legend-row { padding: 3px 8px; font-size: 10px; gap: 6px; }
+}
+
+@media (max-width: 820px) {
+  /* Panes teilen sich den Platz dynamisch statt fixer Höhe zu stapeln —
+     sonst schrumpft der Hauptchart bei 3+ Indikatoren auf null. */
+  .ind-panes { max-height: 42dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .ind-pane { height: 104px; }
+
+  /* Legenden dürfen den Chart nicht zudecken: horizontal scrollbar statt Stapel */
+  #chartIndLegend {
+    top: 6px; left: 6px; right: 6px;
+    flex-direction: row; flex-wrap: nowrap; gap: 5px;
+    overflow-x: auto; scrollbar-width: none; pointer-events: auto;
+    max-width: calc(100% - 62px); /* Platz für den Fullscreen-Button */
+  }
+  #chartIndLegend::-webkit-scrollbar { display: none; }
+  .ind-legend { top: 3px; left: 6px; right: 6px; flex-direction: row; gap: 5px; overflow-x: auto; }
+  .ind-legend::-webkit-scrollbar { display: none; }
+  .ind-legend-row { flex-shrink: 0; }
+
+  /* Modals als Bottom-Sheet — mit Platz für die Mobile-Nav und Safe-Area */
+  .ind-modal {
+    top: auto; bottom: 0; left: 0; transform: none;
+    width: 100vw; max-width: 100vw;
+    max-height: min(78dvh, calc(100dvh - 60px));
+    border-radius: 18px 18px 0 0;
+    padding-bottom: var(--safe-bottom);
+  }
+  .ind-modal-head { padding: 14px 16px 12px; }
+  /* Greif-Indikator wie bei nativen Sheets */
+  .ind-modal-head::before {
+    content: ''; position: absolute; top: 6px; left: 50%; transform: translateX(-50%);
+    width: 38px; height: 4px; border-radius: 3px; background: var(--border);
+  }
+  .ind-modal-head { position: relative; }
+  .ind-modal-close { width: 36px; height: 36px; font-size: 20px; }
+  .ind-search input { padding: 11px 13px; font-size: 16px; } /* 16px verhindert iOS-Auto-Zoom */
+  .ind-item { padding: 13px 16px; min-height: 48px; font-size: 14px; }
+  .ind-field { min-height: 46px; }
+  .ind-field input[type="number"], .ind-field select {
+    padding: 10px 12px; font-size: 16px; width: 140px; min-height: 44px;
+  }
+  .ind-field input[type="color"] { width: 54px; height: 40px; }
+  .ind-btn { padding: 12px 18px; min-height: 46px; font-size: 13px; flex: 1; }
+  .ind-modal-foot { padding: 12px 16px calc(12px + var(--safe-bottom)); }
+}
+
+@media (max-width: 420px) {
+  .ind-pane { height: 92px; }
+  .ind-panes { max-height: 38dvh; }
+  /* Toolbar-Button auf Icon reduzieren, wie VP/Fullscreen */
+  #indBrowserBtn { font-size: 0; width: 38px; padding: 7px 0; justify-content: center; }
+  #indBrowserBtn::before { content: 'ƒ'; font-size: 17px; font-style: italic; font-weight: 700; }
+  .ind-field { flex-direction: column; align-items: stretch; gap: 6px; }
+  .ind-field input[type="number"], .ind-field select { width: 100%; }
+}
+
+/* Querformat auf dem Handy: Höhe ist knapp — Panes klein halten.
+   Achtung: 844px Breite liegt ÜBER dem 820px-Mobile-Breakpoint, deshalb müssen
+   die Touch-Regeln hier eigenständig wiederholt werden. */
+@media (orientation: landscape) and (max-height: 520px) and (max-width: 920px) {
+  .ind-pane { height: 74px; }
+  .ind-panes { max-height: 34dvh; }
+
+  /* Bottom-Sheet auch hier, sonst ragt der Dialog oben/unten heraus */
+  .ind-modal {
+    top: auto; bottom: 0; left: 0; transform: none;
+    width: 100vw; max-width: 100vw; max-height: 92dvh;
+    border-radius: 16px 16px 0 0;
+    padding-bottom: var(--safe-bottom);
+  }
+  /* Touch-Targets: im Querformat gilt derselbe Finger wie im Hochformat */
+  .ind-item { min-height: 44px; padding: 11px 16px; }
+  .ind-btn { min-height: 44px; padding: 11px 18px; }
+  .ind-field { min-height: 44px; }
+  .ind-field input[type="number"], .ind-field select { min-height: 42px; font-size: 16px; }
+  .ind-search input { font-size: 16px; }
+  .ind-modal-close { width: 36px; height: 36px; }
+  .ind-actions { opacity: 1; }
+  /* Liste bekommt eigenen Scroll, damit die Buttons unten erreichbar bleiben */
+  .ind-modal-body { max-height: 56dvh; overflow-y: auto; }
+}
+
+/* Im Chart-Fullscreen die Panes mitskalieren */
+body.chart-fullscreen .ind-panes { max-height: 40dvh; }
+@media (max-width: 820px) {
+  body.chart-fullscreen .ind-pane { height: 96px; }
+  body.chart-fullscreen .ind-panes { max-height: 34dvh; }
 }
 
 .settings-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,.58); z-index:520; backdrop-filter:blur(3px); }
@@ -630,6 +731,61 @@ button, .wl-item, .side-tab, .subchart-tab, .symbol-box { touch-action: manipula
   :root { --bottom-nav-h: 50px; }
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   PWA — installierte App (Android/iOS Homescreen)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Im Standalone-/Fullscreen-Modus gibt es keine Browser-UI mehr, also müssen
+   Notch und Gesten-Leiste selbst kompensiert werden. */
+body.pwa-standalone {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+body.pwa-standalone .topbar { padding-top: 2px; }
+
+/* Pull-to-Refresh im installierten Terminal unterdrücken (versehentliches
+   Neuladen mitten im Chart-Scroll ist dort besonders störend). */
+body.pwa-standalone { overscroll-behavior-y: contain; }
+
+/* Install-Banner */
+#pwaInstall {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%) translateY(140%);
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index: 9000;
+  width: min(440px, calc(100vw - 24px));
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 18px 50px #000a;
+  transition: transform .28s cubic-bezier(.2,.8,.3,1);
+}
+#pwaInstall.show { transform: translateX(-50%) translateY(0); }
+#pwaInstall img { width: 40px; height: 40px; border-radius: 10px; flex: none; }
+#pwaInstall .pwa-txt { flex: 1; min-width: 0; line-height: 1.35; }
+#pwaInstall .pwa-title { font-weight: 700; font-size: 13px; color: var(--txt); }
+#pwaInstall .pwa-sub { font-size: 11px; color: var(--muted); }
+#pwaInstall button {
+  flex: none; border: 0; border-radius: 9px; cursor: pointer;
+  font-weight: 700; font-size: 12px; padding: 9px 14px;
+  background: var(--blue); color: #fff;
+}
+#pwaInstall button.pwa-dismiss {
+  background: transparent; color: var(--muted);
+  font-size: 18px; padding: 6px 8px; font-weight: 400;
+}
+
+/* Fullscreen-Toggle nur zeigen, wenn die App installiert läuft. */
+#fullscreenBtn { display: none; }
+body.pwa-standalone #fullscreenBtn { display: inline-flex; }
+
 </style>
 </head>
 <body>
@@ -664,8 +820,20 @@ button, .wl-item, .side-tab, .subchart-tab, .symbol-box { touch-action: manipula
     <button class="dash-btn" id="signalRefreshTop" title="Signal Engine ausführen">⚡ Signale</button>
     <button class="icon-btn" id="settingsBtn" title="Einstellungen & Demo-Konto">⚙</button>
     <button class="icon-btn ai-trigger" id="aiTrigger" title="KI-Assistent">🤖</button>
+    <button class="icon-btn" id="fullscreenBtn" title="Vollbild umschalten">⛶</button>
     <a href="/guide" class="icon-btn" title="Guide" style="text-decoration:none">📚</a>
   </div>
+</div>
+
+<!-- PWA Install-Banner -->
+<div id="pwaInstall" role="dialog" aria-label="TradePro installieren">
+  <img src="/static/icons/icon-192.png" alt="">
+  <div class="pwa-txt">
+    <div class="pwa-title">TradePro als App installieren</div>
+    <div class="pwa-sub">Vollbild ohne Browser-Leiste, direkt vom Homescreen.</div>
+  </div>
+  <button id="pwaInstallBtn" type="button">Installieren</button>
+  <button id="pwaDismissBtn" class="pwa-dismiss" type="button" aria-label="Schließen">✕</button>
 </div>
 
 <!-- TIMEFRAME BAR -->
@@ -2131,6 +2299,135 @@ init();
       document.head.appendChild(s);
     })));
   }
+})();
+</script>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     PWA — Service-Worker-Registrierung, Install-Prompt, Fullscreen
+     ══════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+
+  const DISMISS_KEY = 'tradepro.pwa.installDismissedAt';
+  const DISMISS_DAYS = 14;
+
+  /** Läuft die App installiert (ohne Browser-UI)? */
+  function isStandalone() {
+    return window.matchMedia('(display-mode: standalone)').matches
+        || window.matchMedia('(display-mode: fullscreen)').matches
+        || window.matchMedia('(display-mode: minimal-ui)').matches
+        || window.navigator.standalone === true;
+  }
+
+  function applyStandaloneClass() {
+    document.body.classList.toggle('pwa-standalone', isStandalone());
+  }
+
+  applyStandaloneClass();
+  ['standalone', 'fullscreen', 'minimal-ui', 'browser'].forEach(mode => {
+    const mq = window.matchMedia('(display-mode: ' + mode + ')');
+    const handler = applyStandaloneClass;
+    if (mq.addEventListener) mq.addEventListener('change', handler);
+    else if (mq.addListener) mq.addListener(handler);
+  });
+
+  // ── Service Worker ────────────────────────────────────────────────────────
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        .then(reg => {
+          // Neue Version sofort übernehmen, damit der Nutzer nach einem Deploy
+          // nicht auf einer alten Shell hängen bleibt.
+          reg.addEventListener('updatefound', () => {
+            const sw = reg.installing;
+            if (!sw) return;
+            sw.addEventListener('statechange', () => {
+              if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+                sw.postMessage({ type: 'SKIP_WAITING' });
+              }
+            });
+          });
+          reg.update().catch(() => {});
+        })
+        .catch(err => console.warn('[PWA] Service Worker nicht registriert:', err));
+    });
+
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloaded) return;
+      reloaded = true;
+      location.reload();
+    });
+  }
+
+  // ── Install-Prompt (Android/Chrome/Edge) ──────────────────────────────────
+  const banner = document.getElementById('pwaInstall');
+  const installBtn = document.getElementById('pwaInstallBtn');
+  const dismissBtn = document.getElementById('pwaDismissBtn');
+  let deferredPrompt = null;
+
+  function recentlyDismissed() {
+    const ts = Number(localStorage.getItem(DISMISS_KEY) || 0);
+    return ts > 0 && (Date.now() - ts) < DISMISS_DAYS * 864e5;
+  }
+
+  function hideBanner() { if (banner) banner.classList.remove('show'); }
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (!banner || isStandalone() || recentlyDismissed()) return;
+    banner.classList.add('show');
+  });
+
+  if (installBtn) {
+    installBtn.addEventListener('click', async () => {
+      if (!deferredPrompt) { hideBanner(); return; }
+      hideBanner();
+      deferredPrompt.prompt();
+      try { await deferredPrompt.userChoice; } catch (_) { /* egal */ }
+      deferredPrompt = null;
+    });
+  }
+
+  if (dismissBtn) {
+    dismissBtn.addEventListener('click', () => {
+      localStorage.setItem(DISMISS_KEY, String(Date.now()));
+      hideBanner();
+    });
+  }
+
+  window.addEventListener('appinstalled', () => {
+    deferredPrompt = null;
+    localStorage.removeItem(DISMISS_KEY);
+    hideBanner();
+  });
+
+  // ── Manueller Fullscreen-Toggle (echtes Vollbild in der installierten App) ─
+  const fsBtn = document.getElementById('fullscreenBtn');
+  if (fsBtn) {
+    fsBtn.addEventListener('click', () => {
+      const el = document.documentElement;
+      if (!document.fullscreenElement) {
+        (el.requestFullscreen || el.webkitRequestFullscreen || (() => {})).call(el)
+          ?.catch?.(err => console.warn('[PWA] Fullscreen abgelehnt:', err));
+      } else {
+        (document.exitFullscreen || document.webkitExitFullscreen || (() => {}))
+          .call(document);
+      }
+    });
+    document.addEventListener('fullscreenchange', () => {
+      fsBtn.textContent = document.fullscreenElement ? '⤡' : '⛶';
+    });
+  }
+
+  // Kleines Debug-Handle, damit man den Zustand in der Konsole prüfen kann.
+  window.TradeProPWA = {
+    isStandalone,
+    canInstall: () => deferredPrompt !== null,
+    showBanner: () => banner && banner.classList.add('show'),
+  };
 })();
 </script>
 </body>

@@ -29,7 +29,13 @@ from typing import Dict, Set
 import httpx
 import websockets
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+    RedirectResponse,
+    StreamingResponse,
+)
 from fastapi.staticfiles import StaticFiles
 
 import ai_assistant as ai
@@ -224,7 +230,14 @@ button{{width:100%;margin-top:20px;border:0;border-radius:10px;padding:13px 16px
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
     path = request.url.path
-    public = path in {"/login", "/auth/login", "/healthz"}
+    # PWA-Assets müssen ohne Session erreichbar sein: Chrome lädt Manifest und
+    # Icons teils ohne Cookies, und ein 303-Redirect auf /login würde die
+    # Installierbarkeit brechen. Sie enthalten keine Nutzerdaten.
+    public = (
+        path in {"/login", "/auth/login", "/healthz",
+                 "/manifest.webmanifest", "/sw.js", "/offline.html"}
+        or path.startswith("/static/icons/")
+    )
     if not public:
         user = request_user(request)
         if not user:
@@ -992,6 +1005,34 @@ async def classic():
 @app.get("/guide", response_class=HTMLResponse)
 async def guide():
     return HTMLResponse((STATIC_DIR / "guide.html").read_text())
+
+
+# ── PWA (Android-Installation / Fullscreen) ──────────────────────────────────
+# Manifest und Service Worker müssen vom Origin-Root ausgeliefert werden, damit
+# der SW-Scope die gesamte App abdeckt (ein SW unter /static/ könnte nur
+# /static/* kontrollieren).
+
+@app.get("/manifest.webmanifest", include_in_schema=False)
+async def manifest():
+    return FileResponse(
+        str(STATIC_DIR / "manifest.webmanifest"),
+        media_type="application/manifest+json",
+        headers={"Cache-Control": "no-cache"},
+    )
+
+
+@app.get("/sw.js", include_in_schema=False)
+async def service_worker():
+    return FileResponse(
+        str(STATIC_DIR / "sw.js"),
+        media_type="application/javascript",
+        headers={"Cache-Control": "no-cache", "Service-Worker-Allowed": "/"},
+    )
+
+
+@app.get("/offline.html", include_in_schema=False)
+async def offline_page():
+    return FileResponse(str(STATIC_DIR / "offline.html"), media_type="text/html")
 
 
 if __name__ == "__main__":
