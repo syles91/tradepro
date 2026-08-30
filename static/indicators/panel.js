@@ -144,8 +144,13 @@
   // ── Legenden ──────────────────────────────────────────────────────────────
   function legendRow(inst) {
     const def = Reg.get(inst.defId);
-    const title = def.legend ? def.legend(inst.inputs) : def.short;
-    const vals = Object.keys(inst.lastValues || {}).map(k => {
+    const compact = window.innerWidth <= 420;
+    // Auf sehr schmalen Screens nur das Kürzel + erster Wert, sonst wird die
+    // Legende breiter als der Chart.
+    const title = compact ? def.short : (def.legend ? def.legend(inst.inputs) : def.short);
+    let keys = Object.keys(inst.lastValues || {});
+    if (compact) keys = keys.slice(0, 1);
+    const vals = keys.map(k => {
       const v = inst.lastValues[k];
       return '<span class="ind-val">' + (Math.abs(v) >= 1000 ? v.toFixed(1) : v.toFixed(def.precision != null ? def.precision : 2)) + '</span>';
     }).join('');
@@ -275,7 +280,35 @@
   }
 
   // ── Resize / Sync ─────────────────────────────────────────────────────────
+  /** Verteilt die verfügbare Höhe auf die Panes. Auf schmalen/kurzen Screens
+   *  darf die Summe der Panes den Hauptchart nicht auffressen — daher wird
+   *  ab 2 Panes proportional heruntergerechnet (mit sinnvollem Minimum). */
+  function applyPaneHeights() {
+    const panes = instances.filter(i => i.paneEl);
+    if (!panes.length) return;
+    const mobile = window.innerWidth <= 820;
+    const shortScreen = window.innerHeight <= 520;
+    const base = shortScreen ? 74 : mobile ? (window.innerWidth <= 420 ? 92 : 104) : 130;
+    const min = shortScreen ? 56 : mobile ? 60 : 84;
+
+    // Der Hauptchart muss nutzbar bleiben. Statt blind einen Prozentsatz der
+    // Viewporthöhe zu verteilen, rechnen wir vom tatsächlich freien Platz aus:
+    // Viewport minus bereits belegte Chrome-Elemente (Topbar, TF-Leiste,
+    // Subchart samt Tabs, Mobile-Nav) minus reservierte Mindest-Charthöhe.
+    const chrome = Array.from(document.querySelectorAll(
+        '.topbar, .tf-bar, .subchart-wrap.show, .subchart-tabs, .mobile-nav'))
+      .reduce((sum, el) => sum + (el.offsetParent === null ? 0 : el.getBoundingClientRect().height), 0);
+    const minChart = shortScreen ? 150 : mobile ? 210 : 260;
+    const free = window.innerHeight - chrome - minChart;
+    const budget = Math.max(min * panes.length * 0.6, Math.min(
+      free, window.innerHeight * (shortScreen ? 0.34 : mobile ? 0.42 : 0.46)));
+
+    const h = Math.max(min, Math.min(base, Math.floor(budget / panes.length)));
+    panes.forEach(inst => { inst.paneEl.style.height = h + 'px'; });
+  }
+
   function resizeAll() {
+    applyPaneHeights();
     instances.forEach(inst => {
       if (!inst.paneChart || !inst.paneEl) return;
       const host = inst.paneEl.querySelector('.ind-pane-chart');
@@ -295,7 +328,16 @@
     ctx = context;
 
     ctx.chart.timeScale().subscribeVisibleTimeRangeChange(r => { if (r) syncAllPanes(r); });
-    window.addEventListener('resize', resizeAll);
+
+    // Bei Resize/Rotation: Panes neu vermessen und Legenden neu rendern, da
+    // deren Kompakt-Darstellung von der Viewport-Breite abhängt.
+    let lastCompact = window.innerWidth <= 420;
+    window.addEventListener('resize', () => {
+      resizeAll();
+      const nowCompact = window.innerWidth <= 420;
+      if (nowCompact !== lastCompact) { lastCompact = nowCompact; renderLegends(); }
+    });
+    window.addEventListener('orientationchange', () => setTimeout(() => { resizeAll(); renderLegends(); }, 250));
 
     document.getElementById('indBrowserBtn').onclick = openBrowser;
     document.getElementById('indBrowserBackdrop').onclick = closeBrowser;
