@@ -434,6 +434,65 @@ body.chart-fullscreen #chartFullscreenBtn { width: auto; min-width: 58px; paddin
 
 
 /* Settings / Account Menu */
+/* ══ INDIKATOR-PANEL ══════════════════════════════════════════════════ */
+.ind-panes { display: flex; flex-direction: column; flex-shrink: 0; }
+.ind-pane { position: relative; height: 130px; border-top: 1px solid var(--border); background: var(--bg); flex-shrink: 0; }
+.ind-pane-chart { position: absolute; inset: 0; }
+.ind-legend { position: absolute; top: 4px; left: 8px; z-index: 4; display: flex; flex-direction: column; gap: 2px; pointer-events: none; }
+#chartIndLegend { position: absolute; top: 8px; left: 10px; z-index: 6; display: flex; flex-direction: column; gap: 2px; pointer-events: none; }
+.ind-legend-row {
+  display: flex; align-items: center; gap: 7px; pointer-events: auto;
+  background: rgba(11,14,17,.72); border: 1px solid var(--border); border-radius: 6px;
+  padding: 2px 7px; font-size: 11px; font-weight: 700; color: var(--txt); white-space: nowrap;
+}
+.ind-legend-row.off { opacity: .45; }
+.ind-legend-row .ind-name { color: var(--muted); }
+.ind-legend-row .ind-val { color: var(--txt); font-variant-numeric: tabular-nums; }
+.ind-actions { display: flex; gap: 2px; opacity: 0; transition: opacity .12s; }
+.ind-legend-row:hover .ind-actions { opacity: 1; }
+.ind-ic { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 11px; padding: 1px 3px; line-height: 1; border-radius: 4px; }
+.ind-ic:hover { color: var(--txt); background: var(--panel2); }
+
+.ind-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.58); z-index: 540; backdrop-filter: blur(3px); }
+.ind-modal {
+  display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  width: min(520px, calc(100vw - 24px)); max-height: min(660px, 88dvh);
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 16px;
+  z-index: 550; box-shadow: 0 26px 80px rgba(0,0,0,.6); overflow: hidden;
+  display: none; flex-direction: column;
+}
+.ind-modal-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.ind-modal-title { font-size: 14px; font-weight: 800; }
+.ind-modal-close { background: none; border: 0; color: var(--muted); font-size: 18px; cursor: pointer; }
+.ind-modal-close:hover { color: var(--txt); }
+.ind-search { padding: 10px 16px; border-bottom: 1px solid var(--border); }
+.ind-search input {
+  width: 100%; background: var(--panel); border: 1px solid var(--border); border-radius: 9px;
+  color: var(--txt); padding: 9px 12px; font-size: 13px; outline: none;
+}
+.ind-search input:focus { border-color: var(--blue); }
+.ind-list { overflow-y: auto; flex: 1; padding: 6px 0; }
+.ind-cat { padding: 10px 16px 5px; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.ind-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 16px; cursor: pointer; font-size: 13px; }
+.ind-item:hover { background: var(--panel); }
+.ind-item-name { font-weight: 600; }
+.ind-item-tag { font-size: 9px; font-weight: 800; color: var(--muted); border: 1px solid var(--border); border-radius: 5px; padding: 2px 6px; }
+.ind-modal-body { padding: 14px 16px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 10px; }
+.ind-field { display: flex; align-items: center; justify-content: space-between; gap: 14px; font-size: 12px; }
+.ind-field > span { color: var(--muted); font-weight: 600; }
+.ind-field input[type="number"], .ind-field select {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+  color: var(--txt); padding: 7px 10px; font-size: 12px; width: 150px; outline: none;
+}
+.ind-field input[type="color"] { width: 46px; height: 30px; background: none; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; padding: 2px; }
+.ind-modal-foot { display: flex; gap: 8px; justify-content: flex-end; padding: 12px 16px; border-top: 1px solid var(--border); }
+.ind-btn { border-radius: 9px; padding: 8px 16px; font-size: 12px; font-weight: 800; cursor: pointer; border: 1px solid var(--border); background: var(--panel); color: var(--txt); }
+.ind-btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+@media (max-width: 900px) {
+  .ind-pane { height: 108px; }
+  .ind-actions { opacity: 1; }
+}
+
 .settings-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,.58); z-index:520; backdrop-filter:blur(3px); }
 .settings-backdrop.show { display:block; }
 .settings-modal { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); width:min(720px,calc(100vw - 24px)); max-height:min(820px,92dvh); background:var(--bg2); border:1px solid var(--border); border-radius:18px; z-index:530; box-shadow:0 30px 90px rgba(0,0,0,.62); overflow:hidden; }
@@ -620,6 +679,7 @@ button, .wl-item, .side-tab, .subchart-tab, .symbol-box { touch-action: manipula
   <button class="tf-btn" data-tf="1d">1D</button>
   <div class="tf-divider"></div>
   <button class="chart-type-btn active" id="typeCandle" title="Kerzen">📊 Kerzen</button>
+  <button class="chart-type-btn" id="indBrowserBtn" title="Indikatoren hinzufügen">ƒ Indikatoren</button>
   <button class="chart-type-btn" id="vpToggle" title="Volume Profile">📊 VP</button>
   <button class="chart-type-btn" id="vahValToggle" title="POC / Value Area Linien">🎯 POC/VA</button>
   <button class="chart-type-btn fs-inline-btn" id="chartFullscreenTop" title="Chart Fullscreen">⛶ Fullscreen</button>
@@ -639,9 +699,12 @@ button, .wl-item, .side-tab, .subchart-tab, .symbol-box { touch-action: manipula
     <div class="chart-main">
       <div id="chart"></div>
       <canvas id="vpCanvas" style="position:absolute;inset:0;pointer-events:none;z-index:3;display:none"></canvas>
+      <div id="chartIndLegend"></div>
       <button class="chart-fs-btn" id="chartFullscreenBtn" title="Chart Fullscreen" aria-label="Chart Fullscreen">⛶</button>
       <div class="chart-loading" id="chartLoading"><div class="spinner"></div><span class="muted">Lade Chart…</span></div>
     </div>
+    <!-- Indikator-Panes (modular, dynamisch) -->
+    <div class="ind-panes" id="indPanes"></div>
     <!-- Sub-chart tabs -->
     <div class="subchart-tabs">
       <div class="subchart-tab active" data-sub="oi">📦 Open Interest</div>
@@ -849,6 +912,7 @@ const State = {
   vpData: null,         // gecachte Volume-Profile-Daten
   vpLines: [],          // PriceLine-Referenzen (POC/VAH/VAL)
   viewRange: null,      // gemerkter sichtbarer Zeitbereich (für Chart<->Sub-Sync)
+  indicatorsReady: false, // Indikator-Engine geladen?
 };
 
 const fmt = {
@@ -952,6 +1016,7 @@ function resizeCharts() {
   chart.resize(cm.clientWidth, cm.clientHeight);
   const sw = document.getElementById('subchart');
   if (sw.clientWidth) subChart.resize(sw.clientWidth, sw.clientHeight);
+  if (window.TradePro && TradePro.IndicatorPanel) TradePro.IndicatorPanel.resizeAll();
   if (State.showVP) drawVolumeProfile();
 }
 window.addEventListener('resize', resizeCharts);
@@ -1022,6 +1087,10 @@ async function loadChart() {
   }
   document.getElementById('chartLoading').style.display = 'none';
   resizeCharts();
+  // Modulare Indikatoren auf die neuen Kerzen neu berechnen
+  if (window.TradePro && TradePro.IndicatorPanel && State.indicatorsReady) {
+    TradePro.IndicatorPanel.renderAll();
+  }
 }
 
 async function loadSubChart() {
@@ -1995,6 +2064,74 @@ async function init() {
   setInterval(() => { if (State.ws && State.ws.readyState===1) State.ws.send(JSON.stringify({action:'ping'})); }, 25000);
 }
 init();
+</script>
+
+<!-- ══ INDIKATOR-BROWSER ══ -->
+<div class="ind-backdrop" id="indBrowserBackdrop"></div>
+<div class="ind-modal" id="indBrowserModal">
+  <div class="ind-modal-head">
+    <div class="ind-modal-title">Indikatoren</div>
+    <button class="ind-modal-close" id="indBrowserClose">✕</button>
+  </div>
+  <div class="ind-search"><input type="text" id="indSearch" placeholder="Suchen… (z. B. RSI, MACD, Bollinger)" autocomplete="off"></div>
+  <div class="ind-list" id="indBrowserList"></div>
+</div>
+
+<!-- ══ INDIKATOR-EINSTELLUNGEN ══ -->
+<div class="ind-backdrop" id="indSettingsBackdrop"></div>
+<div class="ind-modal" id="indSettingsModal">
+  <div class="ind-modal-head">
+    <div class="ind-modal-title">Einstellungen</div>
+    <button class="ind-modal-close" id="indSettingsCancel">✕</button>
+  </div>
+  <div class="ind-modal-body"></div>
+  <div class="ind-modal-foot">
+    <button class="ind-btn" id="indSettingsCancelBtn">Abbrechen</button>
+    <button class="ind-btn primary" id="indSettingsApply">Übernehmen</button>
+  </div>
+</div>
+
+<script src="/static/indicators/panel.js"></script>
+<script>
+// ════════════════════════════════════════════════════════════════════════════
+//  INDIKATOR-ENGINE BOOTSTRAP
+//  Lädt core.js + alle Module aus builtin/ und custom/ (Server-Discovery),
+//  hängt danach das Panel an den Haupt-Chart.
+// ════════════════════════════════════════════════════════════════════════════
+(async function bootIndicators() {
+  try {
+    const res = await fetch('/api/indicators/modules');
+    const { modules } = await res.json();
+    const core = modules.filter(m => m.endsWith('/core.js'));
+    const rest = modules.filter(m => !m.endsWith('/core.js'));
+    await loadScripts(core);
+    await loadScripts(rest);
+
+    TradePro.IndicatorPanel.attach({
+      chart,
+      chartOpts,
+      getCandles: () => State.candles,
+      toLocalTime,
+      panesEl: document.getElementById('indPanes'),
+      mainLegendEl: document.getElementById('chartIndLegend'),
+    });
+    State.indicatorsReady = true;
+    if (State.candles.length) TradePro.IndicatorPanel.renderAll();
+  } catch (e) {
+    console.error('[Indicators] Bootstrap fehlgeschlagen', e);
+  }
+
+  function loadScripts(urls) {
+    return Promise.all(urls.map(u => new Promise(resolve => {
+      const s = document.createElement('script');
+      s.src = u + '?v=' + Date.now();
+      s.async = false;
+      s.onload = resolve;
+      s.onerror = () => { console.error('[Indicators] Modul nicht ladbar:', u); resolve(); };
+      document.head.appendChild(s);
+    })));
+  }
+})();
 </script>
 </body>
 </html>

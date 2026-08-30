@@ -952,6 +952,29 @@ async def ws_endpoint(ws: WebSocket):
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
+@app.get("/api/indicators/modules")
+async def indicator_modules():
+    """Listet alle Indikator-Module auf, die das Frontend laden soll.
+
+    Reihenfolge: core.js zuerst, dann builtin/, dann custom/. Neue Indikatoren
+    werden einfach als .js nach static/indicators/custom/ gelegt — sie tauchen
+    ohne Code-Änderung automatisch im Indikator-Panel auf.
+    """
+    base = STATIC_DIR / "indicators"
+    modules: list[str] = []
+    if (base / "core.js").is_file():
+        modules.append("/static/indicators/core.js")
+    for folder in ("builtin", "custom"):
+        d = base / folder
+        if not d.is_dir():
+            continue
+        for f in sorted(d.glob("*.js")):
+            if f.name.startswith("_"):
+                continue
+            modules.append(f"/static/indicators/{folder}/{f.name}")
+    return {"modules": modules}
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index():
     return HTMLResponse(
