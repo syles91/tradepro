@@ -58,12 +58,13 @@ const statsHost = d.getElementById('mStatsHost');
 
 // ── Mobil: alles in den Sheets? ──
 chk('7 Timeframes im TF-Sheet', tfHost.querySelectorAll('.tf-btn').length === 7);
-chk('6 Werkzeuge im Tools-Sheet', toolsHost.querySelectorAll('.chart-type-btn').length === 6);
+chk('7 Werkzeuge im Tools-Sheet', toolsHost.querySelectorAll('.chart-type-btn').length === 7);
 chk('7 Kennzahlen im Stats-Sheet', statsHost.querySelectorAll('.stat').length === 7);
 chk('Exchange-Switch im Stats-Sheet', !!statsHost.querySelector('#exchangeSwitch'));
 chk('tf-bar ist leer', d.querySelectorAll('.tf-bar .tf-btn').length === 0);
 chk('ticker-stats ist leer', d.querySelectorAll('.ticker-stats .stat').length === 0);
 chk('Indikator-Button im Sheet', !!toolsHost.querySelector('#indBrowserBtn'));
+chk('Liq-Heat-Button im Sheet', !!toolsHost.querySelector('#lhToggle'));
 chk('Aktiv-Button im Sheet', !!toolsHost.querySelector('#indManageBtn'));
 
 // ── Keine doppelten IDs (der Kernfehler beim Kopieren statt Verschieben) ──
@@ -149,7 +150,7 @@ chk('Kennzahl im Sheet beschreibbar', d.getElementById('tPrice').textContent ===
 MOBILE = false;
 listeners.forEach(fn => fn());
 chk('Desktop: Timeframes zurueck in tf-bar', d.querySelectorAll('.tf-bar .tf-btn').length === 7);
-chk('Desktop: Werkzeuge zurueck in chart-tools', d.querySelectorAll('#chartTools .chart-type-btn').length === 6);
+chk('Desktop: Werkzeuge zurueck in chart-tools', d.querySelectorAll('#chartTools .chart-type-btn').length === 7);
 chk('Desktop: Kennzahlen zurueck in ticker-stats', d.querySelectorAll('.ticker-stats .stat').length === 7);
 chk('Desktop: Exchange zurueck in Topbar', !!d.querySelector('.topbar > #exchangeSwitch'));
 chk('Desktop: Sheets leer', tfHost.children.length === 0 && statsHost.children.length === 0 && toolsHost.children.length === 0);
@@ -170,7 +171,7 @@ chk('Desktop: Exchange-Handler weiterhin aktiv', clicks.includes('ex:binance'));
 MOBILE = true;
 listeners.forEach(fn => fn());
 chk('Rotation zurueck: wieder 7 TFs im Sheet', tfHost.querySelectorAll('.tf-btn').length === 7);
-chk('Rotation zurueck: wieder 6 Werkzeuge im Sheet', toolsHost.querySelectorAll('.chart-type-btn').length === 6);
+chk('Rotation zurueck: wieder 7 Werkzeuge im Sheet', toolsHost.querySelectorAll('.chart-type-btn').length === 7);
 chk('Rotation zurueck: keine doppelten IDs',
   (() => { const a = [...d.querySelectorAll('[id]')].map(e => e.id); return a.length === new Set(a).size; })());
 clicks.length = 0;

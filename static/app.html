@@ -269,6 +269,21 @@ body {
 .lm-cluster.down .lm-c-usd { color: var(--green-br); }
 .lm-note { padding: 6px 10px 12px; font-size: 9px; color: var(--muted); line-height: 1.45; }
 
+/* Legende des Liquidation-Heatmap-Overlays im Hauptchart */
+.lh-legend { position: absolute; top: 8px; left: 10px; z-index: 4;
+  display: flex; align-items: center; gap: 10px; pointer-events: none;
+  background: rgba(11,14,17,.72); border: 1px solid var(--border);
+  border-radius: 6px; padding: 4px 9px; font-size: 10px; color: var(--muted);
+  backdrop-filter: blur(3px); }
+.lh-legend .lh-title { color: var(--txt); font-weight: 700; }
+.lh-scale { display: flex; align-items: center; gap: 5px;
+  font-variant-numeric: tabular-nums; }
+.lh-scale b { display: block; width: 58px; height: 7px; border-radius: 2px;
+  background: linear-gradient(to right, #10041c, #3b0f70, #8c2981,
+                              #de4968, #fe9f6d, #fcfdbf); }
+.lh-scale i { font-style: normal; }
+.lh-status { color: var(--blue); }
+
 /* Modus-Umschalter Map / Heatmap */
 .lm-modes { display: flex; gap: 4px; padding: 8px 10px 0; flex-shrink: 0; }
 .lm-mode { flex: 1; background: var(--panel2); border: 1px solid var(--border);
@@ -1059,6 +1074,7 @@ body.pwa-standalone #fullscreenBtn { display: inline-flex; }
   <button class="chart-type-btn empty" id="indManageBtn" title="Aktive Indikatoren verwalten">☰ Aktiv<span class="ind-count">0</span></button>
   <button class="chart-type-btn" id="vpToggle" title="Volume Profile">📊 VP</button>
   <button class="chart-type-btn" id="vahValToggle" title="POC / Value Area Linien">🎯 POC/VA</button>
+  <button class="chart-type-btn" id="lhToggle" title="Liquidation Heatmap als Chart-Overlay">🔥 Liq-Heat</button>
   <button class="chart-type-btn fs-inline-btn" id="chartFullscreenTop" title="Chart Fullscreen">⛶ Fullscreen</button>
   </div>
 </div>
@@ -1077,6 +1093,14 @@ body.pwa-standalone #fullscreenBtn { display: inline-flex; }
     <div class="chart-main">
       <div id="chart"></div>
       <canvas id="vpCanvas" style="position:absolute;inset:0;pointer-events:none;z-index:3;display:none"></canvas>
+      <!-- Liquidation-Heatmap-Overlay: liegt UNTER dem Volume Profile (z-index 2),
+           damit das VP-Histogramm lesbar bleibt, wenn beide aktiv sind. -->
+      <canvas id="lhCanvas" style="position:absolute;inset:0;pointer-events:none;z-index:2;display:none"></canvas>
+      <div id="lhLegend" class="lh-legend" style="display:none">
+        <span class="lh-title">🔥 Liquidation Heatmap</span>
+        <span class="lh-scale"><i>0</i><b></b><i id="lhMax">–</i></span>
+        <span class="lh-status" id="lhStatus"></span>
+      </div>
       <div id="chartIndLegend"></div>
       <button class="chart-fs-btn" id="chartFullscreenBtn" title="Chart Fullscreen" aria-label="Chart Fullscreen">⛶</button>
       <div class="chart-loading" id="chartLoading"><div class="spinner"></div><span class="muted">Lade Chart…</span></div>
@@ -1324,6 +1348,10 @@ const State = {
   ws: null,
   reconnectTimer: null,
   showVP: false,        // Volume Profile Histogramm
+  showLH: false,        // Liquidation-Heatmap-Overlay im Hauptchart
+  lhData: null,
+  lhLoading: false,
+  lhThreshold: 0.12,    // schwaches Rauschen ausblenden, damit die Kerzen lesbar bleiben
   signalLines: [],       // Entry/SL/TP PriceLine-Referenzen
   latestSignals: [],
   activeSignalTFs: JSON.parse(localStorage.getItem('tradepro.signalTFs') || '["5m","15m","1h"]'),
@@ -1428,6 +1456,7 @@ function syncTimeScales() {
   // Volume-Profile bei Zoom/Pan neu zeichnen (separat)
   mainTS.subscribeVisibleLogicalRangeChange(() => {
     if (State.showVP) drawVolumeProfile();
+    if (State.showLH) drawLiqHeatOverlay();
   });
 }
 syncTimeScales();
@@ -1441,6 +1470,7 @@ function resizeCharts() {
   if (sw.clientWidth) subChart.resize(sw.clientWidth, sw.clientHeight);
   if (window.TradePro && TradePro.IndicatorPanel) TradePro.IndicatorPanel.resizeAll();
   if (State.showVP) drawVolumeProfile();
+  if (State.showLH) drawLiqHeatOverlay();
 }
 window.addEventListener('resize', resizeCharts);
 
@@ -1695,8 +1725,143 @@ function drawVolumeProfile() {
   });
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+//  INDIKATOR: LIQUIDATION HEATMAP ALS CHART-OVERLAY
+// ════════════════════════════════════════════════════════════════════════════
+// Zeichnet die Liquidations-Heatmap direkt hinter die Kerzen des Hauptcharts.
+// Anders als das Sidebar-Panel (eigenes Koordinatensystem) muss dieses
+// Overlay exakt an der Chart-Achse kleben: Preis -> priceToCoordinate(),
+// Zeit -> timeScale().timeToCoordinate(). Dadurch wandert die Heatmap beim
+// Zoomen/Scrollen korrekt mit.
+
+// Gleiche Palette wie das Sidebar-Panel (Inferno).
+const LH_PALETTE = [
+  [4, 2, 15], [26, 11, 64], [59, 15, 112], [111, 26, 129],
+  [140, 41, 129], [190, 62, 108], [222, 73, 104],
+  [246, 110, 92], [254, 159, 109], [252, 253, 191],
+];
+
+function lhColor(t, alpha) {
+  t = Math.max(0, Math.min(1, t));
+  const n = LH_PALETTE.length - 1;
+  const i = Math.min(Math.floor(t * n), n - 1);
+  const f = t * n - i;
+  const a = LH_PALETTE[i], b = LH_PALETTE[i + 1];
+  return `rgba(${Math.round(a[0] + (b[0] - a[0]) * f)},` +
+         `${Math.round(a[1] + (b[1] - a[1]) * f)},` +
+         `${Math.round(a[2] + (b[2] - a[2]) * f)},${alpha})`;
+}
+
+// Chart-Timeframe -> passendes Heatmap-Fenster. Die Heatmap soll ungefaehr
+// den sichtbaren Chart-Bereich abdecken, nicht willkuerlich viel mehr.
+function lhWindowForTF(tf) {
+  return ({ '1m': '12h', '3m': '12h', '5m': '1d', '15m': '3d',
+            '30m': '3d', '1h': '1w', '2h': '1w', '4h': '1m',
+            '6h': '1m', '12h': '1m', '1d': '1m' })[tf] || '1d';
+}
+
+async function loadLiqHeatOverlay() {
+  if (State.lhLoading) return;
+  State.lhLoading = true;
+  const st = document.getElementById('lhStatus');
+  if (st) st.textContent = 'lädt…';
+  const win = lhWindowForTF(State.tf);
+  try {
+    const res = await fetch(`/api/liquidation_heatmap?symbol=${State.symbol}` +
+      `&exchange=${State.exchange}&window=${win}&bins=120&threshold=${State.lhThreshold}`);
+    const d = await res.json();
+    State.lhData = (d && d.matrix && d.matrix.length) ? d : null;
+    if (st) st.textContent = State.lhData ? '' : (d && d.error ? 'Fehler' : 'keine Daten');
+  } catch (e) {
+    State.lhData = null;
+    if (st) st.textContent = 'Netzwerkfehler';
+  }
+  State.lhLoading = false;
+  drawLiqHeatOverlay();
+}
+
+function drawLiqHeatOverlay() {
+  const cv = document.getElementById('lhCanvas');
+  const cm = document.getElementById('chart');
+  const lg = document.getElementById('lhLegend');
+  if (!cv || !cm) return;
+  const d = State.lhData;
+  if (!State.showLH || !d || !d.matrix.length) {
+    cv.style.display = 'none';
+    if (lg) lg.style.display = State.showLH ? 'flex' : 'none';
+    return;
+  }
+  cv.style.display = 'block';
+  if (lg) lg.style.display = 'flex';
+
+  const W = cm.clientWidth, H = cm.clientHeight;
+  if (!W || !H) return;
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = W * dpr; cv.height = H * dpr;
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  const ts = chart.timeScale();
+  const cols = d.matrix.length;
+  const rows = d.priceBins || d.matrix[0].length;
+  const maxV = d.maxValue || 1;
+  const binSize = d.binSize || ((d.high - d.low) / rows);
+
+  // X-Koordinaten der Spalten. Die Heatmap-Zeitachse ist UTC-basiert, der
+  // Chart rechnet in Zurich-Zeit -> toLocalTime() angleichen, sonst liegen
+  // die Baender zeitlich versetzt.
+  const xs = new Array(cols);
+  let firstX = null, lastX = null;
+  for (let i = 0; i < cols; i++) {
+    const x = ts.timeToCoordinate(toLocalTime(d.times[i]));
+    xs[i] = x;
+    if (x != null) { if (firstX === null) firstX = x; lastX = x; }
+  }
+  if (firstX === null) return;   // Heatmap-Zeitraum liegt ausserhalb der Sicht
+
+  // Spaltenbreite aus dem tatsaechlichen Chart-Abstand ableiten, damit die
+  // Zellen beim Zoomen mitwachsen statt Luecken zu lassen.
+  let step = 0, n = 0;
+  for (let i = 1; i < cols; i++) {
+    if (xs[i] != null && xs[i - 1] != null) { step += xs[i] - xs[i - 1]; n++; }
+  }
+  step = n ? step / n : (lastX - firstX) / Math.max(1, cols - 1);
+  const cw = Math.max(1, Math.abs(step)) + 0.5;
+
+  // Y-Koordinaten der Preis-Bins einmal vorberechnen (teuer pro Zelle).
+  const ys = new Array(rows + 1);
+  for (let y = 0; y <= rows; y++) {
+    ys[y] = candleSeries.priceToCoordinate(d.low + y * binSize);
+  }
+
+  ctx.globalCompositeOperation = 'lighter';   // Baender leuchten additiv
+  for (let x = 0; x < cols; x++) {
+    const px = xs[x];
+    if (px == null || px < -cw || px > W + cw) continue;
+    const col = d.matrix[x];
+    for (let y = 0; y < rows; y++) {
+      const v = col[y];
+      if (v <= 0) continue;
+      const yTop = ys[y + 1], yBot = ys[y];
+      if (yTop == null || yBot == null) continue;
+      const h = Math.abs(yBot - yTop);
+      if (h < 0.05) continue;
+      const t = Math.sqrt(v / maxV);
+      // Alpha mit der Intensitaet koppeln: schwache Zonen bleiben dezent,
+      // starke Baender treten hervor — die Kerzen bleiben immer lesbar.
+      ctx.fillStyle = lhColor(t, 0.18 + t * 0.5);
+      ctx.fillRect(px - cw / 2, Math.min(yTop, yBot), cw, Math.max(0.7, h));
+    }
+  }
+  ctx.globalCompositeOperation = 'source-over';
+
+  const mx = document.getElementById('lhMax');
+  if (mx) mx.textContent = lmFmtUsd(maxV);
+}
+
 function drawValueAreaLines() {
-  // alte Linien entfernen
   State.vpLines.forEach(l => { try { candleSeries.removePriceLine(l); } catch(e){} });
   State.vpLines = [];
   if (!State.showVA || !State.vpData || State.vpData.poc == null) return;
@@ -2321,6 +2486,9 @@ function switchTF(tf) {
   loadChart();
   loadSubChart();
   subscribe();
+  // Das Heatmap-Fenster haengt am Timeframe -> neu laden, sonst passt der
+  // Zeitraum des Overlays nicht mehr zur Chart-Achse.
+  if (State.showLH) { State.lhData = null; loadLiqHeatOverlay(); }
 }
 
 function switchSub(type) {
@@ -2347,6 +2515,9 @@ function reloadAll() {
     const lmPane = document.getElementById('paneLiqMap');
     if (lmPane && lmPane.style.display !== 'none') loadLiqActive();
   }
+  // Heatmap-Overlay ist ebenfalls symbol-/exchange-gebunden.
+  State.lhData = null;
+  if (State.showLH) loadLiqHeatOverlay(); else drawLiqHeatOverlay();
   loadSignals();
   const hint = State.exchange === 'binance'
     ? 'Binance Futures-WS hier geblockt –<br><span style="font-size:10px">wechsle zu Bybit für Live-Liquidationen</span>'
@@ -2411,10 +2582,19 @@ document.getElementById('vahValToggle').onclick = function() {
   if (State.showVA && !State.vpData) loadVolumeProfile();
   else drawValueAreaLines();
 };
+document.getElementById('lhToggle').onclick = function() {
+  State.showLH = !State.showLH;
+  this.classList.toggle('active', State.showLH);
+  if (State.showLH && !State.lhData) loadLiqHeatOverlay();
+  else drawLiqHeatOverlay();
+};
 document.getElementById('chartFullscreenBtn').onclick = toggleChartFullscreen;
 document.getElementById('chartFullscreenTop').onclick = toggleChartFullscreen;
 // VP-Redraw-Timer (faengt vertikales Zoomen der Preisskala ab)
 setInterval(() => { if (State.showVP) drawVolumeProfile(); }, 600);
+// Dito fuer das Heatmap-Overlay: die Preisskala loest keine Events aus,
+// deshalb pollen wir sie — sonst "klebt" die Heatmap beim vertikalen Zoom.
+setInterval(() => { if (State.showLH) drawLiqHeatOverlay(); }, 600);
 
 // Sidebar-Tabs (Futures / Orderbook)
 let obActive = false;
