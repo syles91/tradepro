@@ -98,6 +98,9 @@ body {
 }
 .icon-btn:hover { background: var(--panel2); border-color: var(--blue); }
 
+/* Mobile-Trigger: auf dem Desktop komplett aus. */
+.m-trigger { display: none; }
+
 /* ════════ TIMEFRAME BAR ════════ */
 .tf-bar {
   display: flex; align-items: center; gap: 4px;
@@ -707,44 +710,79 @@ button, .wl-item, .side-tab, .subchart-tab, .symbol-box { touch-action: manipula
 @media (max-width: 820px) {
   body { height: 100dvh; }
   .topbar {
-    height: auto; min-height: 54px; padding: 6px 8px;
-    gap: 6px; flex-wrap: nowrap;
+    height: 52px; min-height: 52px; padding: 6px 8px;
+    gap: 6px; flex-wrap: nowrap; overflow: hidden;
   }
-  .brand { font-size: 15px; margin-right: 2px; }
-  .exchange-switch { margin-right: 4px; }
+  .brand { display: none; }               /* Platz für die Trigger */
+  .exchange-switch { display: none; }     /* liegt im Marktdaten-Sheet */
   .ex-btn { min-height: 36px; padding: 8px 10px; font-size: 11px; }
-  .symbol-box { height: 38px; padding: 0 9px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel); }
-  .symbol-name { font-size: 14px; }
-  .ticker-stats {
-    order: 10; flex-basis: 100%; width: 100%;
-    padding: 4px 2px 0; gap: 14px; min-height: 36px;
-    border-top: 1px solid rgba(35,40,56,.65);
+  .symbol-box {
+    height: 38px; padding: 0 8px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--panel);
+    flex-shrink: 1; min-width: 0;
   }
-  .ticker-stats .stat:nth-child(n+5) { display: none; }
-  .topbar-right { margin-left: auto; gap: 6px; }
+  .symbol-name { font-size: 14px; overflow: hidden; text-overflow: ellipsis; }
+
+  /* ══ EINE EINZIGE KOPFLEISTE ══════════════════════════════════════════
+     Vorher stapelten sich Topbar + Ticker-Stats + Timeframes + Werkzeuge
+     zu vier Zeilen und frassen die halbe Chart-Hoehe. Jetzt bleibt nur die
+     Topbar: Symbol links, kompakte Trigger rechts. Ticker-Details,
+     Timeframes und Werkzeuge liegen in Bottom-Sheets. */
+  .ticker-stats { display: none; }
+  .tf-bar { display: none; }
+
+  .topbar-right { margin-left: auto; gap: 5px; flex-shrink: 0; }
   .dash-btn { padding: 7px 8px; font-size: 11px; min-height: 36px; }
   .icon-btn { width: 36px; height: 36px; }
-  .tf-bar { height: 46px; padding: 0 8px; gap: 6px; overflow-x: auto; }
-  .tf-btn, .chart-type-btn { min-height: 34px; padding: 7px 11px; }
 
-  /* Die Werkzeuge (Indikatoren, VP, POC/VA) lagen bisher hinter den 7
-     Timeframe-Buttons in derselben horizontal scrollenden Leiste — auf dem
-     Handy waren sie damit komplett ausserhalb des Bildschirms und ohne
-     Scroll-Hinweis unauffindbar. Sie bekommen deshalb eine eigene Zeile. */
-  .tf-bar {
-    height: auto; min-height: 46px; flex-wrap: wrap;
-    align-content: flex-start; padding: 5px 8px; overflow-x: visible;
+  /* ── Kompakte Trigger in der Kopfleiste ── */
+  .m-trigger {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: var(--panel); border: 1px solid var(--border); color: var(--txt);
+    border-radius: 8px; cursor: pointer; padding: 3px 8px;
+    min-height: 38px; font-size: 12px; font-weight: 700; line-height: 1.15;
+    white-space: nowrap; flex-shrink: 0;
   }
-  .tf-bar .tf-divider { display: none; }
-  .chart-tools {
-    display: flex; align-items: center; gap: 6px;
-    flex-basis: 100%; width: 100%; order: 10;
-    padding-top: 5px; margin-top: 4px;
-    border-top: 1px solid rgba(35,40,56,.65);
-    overflow-x: auto; scrollbar-width: none;
+  .m-trigger:active { background: var(--panel2); }
+  .m-trigger-sub { font-size: 9px; font-weight: 700; color: var(--muted); }
+  .m-trigger-sub.green { color: var(--green-br); }
+  .m-trigger-sub.red { color: var(--red-br); }
+  .m-trigger-caret { font-size: 8px; color: var(--muted); }
+  #mStatsBtn { font-variant-numeric: tabular-nums; }
+  #mTfBtn, #mToolsBtn { min-width: 40px; }
+
+  /* Guide ist auf dem Handy sekundaer — Platz fuer die Trigger. */
+  .topbar-right > a[href="/guide"] { display: none; }
+
+  /* ── Inhalte der Sheets ── */
+  .m-tools-host, .m-tf-host {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    padding: 14px 16px calc(14px + var(--safe-bottom));
+    overflow-y: auto;
   }
-  .chart-tools::-webkit-scrollbar { display: none; }
-  .chart-tools .chart-type-btn { flex-shrink: 0; }
+  .m-tools-host .chart-type-btn,
+  .m-tf-host .tf-btn {
+    flex: 1 1 calc(50% - 4px); min-height: 48px; font-size: 13px;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    color: var(--txt); padding: 10px 12px;
+  }
+  .m-tf-host .tf-btn.active,
+  .m-tools-host .chart-type-btn.active { border-color: var(--blue); color: var(--blue-lt); background: var(--panel2); }
+  .m-stats-host {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    padding: 14px 16px calc(14px + var(--safe-bottom));
+    overflow-y: auto;
+  }
+  .m-stats-host .stat {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 12px; gap: 3px;
+  }
+  .m-stats-host .stat-label { font-size: 9px; }
+  .m-stats-host .stat-value { font-size: 15px; }
+  .m-stats-host .exchange-switch { display: flex; grid-column: 1 / -1; margin: 0; }
+  .m-stats-host .ex-btn { flex: 1; min-height: 44px; font-size: 13px; }
+
   .main { min-height: 0; flex: 1; padding-bottom: calc(var(--bottom-nav-h) + var(--safe-bottom)); }
   .chart-area { width: 100%; min-width: 0; }
   .chart-main { min-height: 0; }
@@ -782,20 +820,21 @@ button, .wl-item, .side-tab, .subchart-tab, .symbol-box { touch-action: manipula
 }
 
 @media (max-width: 420px) {
-  .brand { display:none; }
   .ex-btn { padding: 8px 8px; }
   .symbol-box { padding: 0 8px; }
   .dash-btn { font-size: 0; width: 38px; }
   .dash-btn::before { content: '⚡'; font-size: 15px; }
-  .ticker-stats .stat:nth-child(n+4) { display:none; }
+  /* Auf sehr schmalen Screens Kurs-Trigger auf den reinen Preis kuerzen,
+     damit Symbol + alle Trigger nebeneinander passen. */
+  #mStatsBtn { padding: 3px 6px; font-size: 11px; }
+  #mStatsBtn .m-trigger-sub { display: none; }
+  .m-trigger { padding: 3px 6px; }
   .subchart-wrap { height: 116px; }
   .watchlist.mobile-show, .sidebar.mobile-show { width: 100vw; }
 }
 
 @media (orientation: landscape) and (max-height: 520px) and (max-width: 920px) {
-  .ticker-stats { display:none; }
-  .topbar { min-height: 46px; }
-  .tf-bar { height: auto; min-height: 40px; flex-wrap: wrap; }
+  .topbar { min-height: 46px; height: 46px; }
   .subchart-wrap { height: 96px; }
   :root { --bottom-nav-h: 50px; }
 }
@@ -885,6 +924,11 @@ body.pwa-standalone #fullscreenBtn { display: inline-flex; }
     <div class="stat"><span class="stat-label">Funding</span><span class="stat-value" id="tFunding">–</span></div>
   </div>
   <div class="topbar-right">
+    <!-- Mobile: kompakte Trigger für die zusammengelegten Leisten.
+         Per CSS nur unterhalb des Mobile-Breakpoints sichtbar. -->
+    <button class="m-trigger" id="mStatsBtn" title="Marktdaten"><span id="mStatsBtnPrice">–</span><span class="m-trigger-sub" id="mStatsBtnChg">–</span></button>
+    <button class="m-trigger" id="mTfBtn" title="Timeframe"><span id="mTfBtnLabel">5m</span><span class="m-trigger-caret">▾</span></button>
+    <button class="m-trigger" id="mToolsBtn" title="Chart-Werkzeuge">⚙<span class="m-trigger-caret">▾</span></button>
     <div class="conn-dot" id="connDot" title="Verbindung"></div>
     <button class="dash-btn" id="signalRefreshTop" title="Signal Engine ausführen">⚡ Signale</button>
     <button class="icon-btn" id="settingsBtn" title="Einstellungen & Demo-Konto">⚙</button>
@@ -1633,6 +1677,7 @@ function drawDepthChart() {
 
 function updateTicker(t) {
   const chgCls = t.change >= 0 ? 'green' : 'red';
+  if (window.MobileBars) MobileBars.updateTriggers(t);
   document.getElementById('tPrice').textContent = fmt.price(t.price);
   const chgEl = document.getElementById('tChange');
   chgEl.textContent = fmt.pct(t.change); chgEl.className = 'stat-value ' + chgCls;
@@ -1997,9 +2042,136 @@ function switchSymbol(sym) {
   showMobilePanel('chart');
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+//  MOBILE KOPFLEISTE — Timeframes / Werkzeuge / Marktdaten in Bottom-Sheets
+//
+//  Auf dem Handy stapelten sich vorher vier Zeilen (Topbar, Ticker-Stats,
+//  Timeframes, Werkzeuge). Jetzt bleibt eine Leiste; die Inhalte wandern in
+//  Sheets. Die Elemente werden VERSCHOBEN, nicht kopiert — sonst gaebe es
+//  doppelte IDs und die bestehenden Handler wuerden auf die falschen (oder
+//  gar keine) Knoten zeigen.
+// ════════════════════════════════════════════════════════════════════════════
+const MobileBars = (() => {
+  const MQ = window.matchMedia('(max-width: 820px)');
+  let movedToSheets = false;
+
+  const $ = id => document.getElementById(id);
+  const sheets = {
+    tools: { modal: 'mToolsModal', backdrop: 'mToolsBackdrop' },
+    tf:    { modal: 'mTfModal',    backdrop: 'mTfBackdrop' },
+    stats: { modal: 'mStatsModal', backdrop: 'mStatsBackdrop' },
+  };
+
+  function open(name) {
+    // Nie zwei Sheets gleichzeitig offen lassen.
+    Object.keys(sheets).forEach(n => { if (n !== name) close(n); });
+    const s = sheets[name];
+    $(s.modal).classList.add('open');
+    $(s.backdrop).classList.add('open');
+  }
+  function close(name) {
+    const s = sheets[name];
+    $(s.modal).classList.remove('open');
+    $(s.backdrop).classList.remove('open');
+  }
+  function closeAll() { Object.keys(sheets).forEach(close); }
+
+  /** Verschiebt Timeframes, Werkzeuge und Ticker-Stats in die Sheets. */
+  function moveToSheets() {
+    if (movedToSheets) return;
+    const tfHost = $('mTfHost'), toolsHost = $('mToolsHost'), statsHost = $('mStatsHost');
+    if (!tfHost || !toolsHost || !statsHost) return;
+
+    document.querySelectorAll('.tf-bar .tf-btn').forEach(b => tfHost.appendChild(b));
+    const tools = $('chartTools');
+    if (tools) Array.from(tools.children).forEach(b => toolsHost.appendChild(b));
+    // Exchange-Umschalter zuerst, dann die Kennzahlen.
+    const ex = $('exchangeSwitch');
+    if (ex) statsHost.appendChild(ex);
+    document.querySelectorAll('.ticker-stats .stat').forEach(s => statsHost.appendChild(s));
+
+    movedToSheets = true;
+  }
+
+  /** Raeumt alles an seinen Desktop-Platz zurueck (Rotation / Resize). */
+  function moveToBars() {
+    if (!movedToSheets) return;
+    const tfBar = $('tfBar'), tools = $('chartTools'),
+          stats = $('tickerStats'), topbar = document.querySelector('.topbar');
+    if (!tfBar || !tools || !stats || !topbar) return;
+
+    const divider = tfBar.querySelector('.tf-divider');
+    document.querySelectorAll('#mTfHost .tf-btn').forEach(b => tfBar.insertBefore(b, divider));
+    Array.from($('mToolsHost').children).forEach(b => tools.appendChild(b));
+    const ex = $('exchangeSwitch');
+    if (ex) topbar.insertBefore(ex, $('symbolBox'));
+    document.querySelectorAll('#mStatsHost .stat').forEach(s => stats.appendChild(s));
+
+    movedToSheets = false;
+  }
+
+  function syncLayout() {
+    if (MQ.matches) moveToSheets();
+    else { closeAll(); moveToBars(); }
+    if (typeof resizeCharts === 'function') resizeCharts();
+  }
+
+  /** Haelt die Trigger-Beschriftungen aktuell (Timeframe, Preis, Aenderung). */
+  function updateTriggers(t) {
+    const tfLabel = $('mTfBtnLabel');
+    if (tfLabel) tfLabel.textContent = State.tf;
+    if (!t) return;
+    const p = $('mStatsBtnPrice'), c = $('mStatsBtnChg');
+    if (p) p.textContent = fmt.price(t.price);
+    if (c) {
+      c.textContent = fmt.pct(t.change);
+      c.className = 'm-trigger-sub ' + (t.change >= 0 ? 'green' : 'red');
+    }
+  }
+
+  function init() {
+    $('mToolsBtn').onclick = () => open('tools');
+    $('mTfBtn').onclick    = () => open('tf');
+    $('mStatsBtn').onclick = () => open('stats');
+    $('mToolsClose').onclick = () => close('tools');
+    $('mTfClose').onclick    = () => close('tf');
+    $('mStatsClose').onclick = () => close('stats');
+    Object.keys(sheets).forEach(n => { $(sheets[n].backdrop).onclick = () => close(n); });
+
+    // Nach einer Auswahl schliesst sich das Sheet — der Nutzer will zurueck
+    // zum Chart. Die eigentlichen Handler haengen an den Buttons selbst und
+    // laufen dank Verschieben (statt Kopieren) unveraendert weiter.
+    $('mTfHost').addEventListener('click', e => {
+      if (e.target.closest('.tf-btn')) { updateTriggers(); close('tf'); }
+    });
+    $('mToolsHost').addEventListener('click', e => {
+      // Indikator-/Verwaltungs-Sheets oeffnen ihr eigenes Overlay.
+      if (e.target.closest('.chart-type-btn')) close('tools');
+    });
+    $('mStatsHost').addEventListener('click', e => {
+      if (e.target.closest('.ex-btn')) close('stats');
+    });
+
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAll(); });
+
+    // matchMedia statt resize: feuert nur beim echten Breakpoint-Wechsel.
+    if (MQ.addEventListener) MQ.addEventListener('change', syncLayout);
+    else MQ.addListener(syncLayout);
+
+    syncLayout();
+    updateTriggers();
+  }
+
+  return { init, syncLayout, updateTriggers, closeAll };
+})();
+// Als const nicht automatisch auf window — fuer den Zugriff aus anderen
+// Funktionen (und Debugging) explizit exportieren.
+window.MobileBars = MobileBars;
+
 function switchTF(tf) {
   State.tf = tf;
   document.querySelectorAll('.tf-btn').forEach(b => b.classList.toggle('active', b.dataset.tf === tf));
+  if (window.MobileBars) MobileBars.updateTriggers();
   loadChart();
   loadSubChart();
   subscribe();
@@ -2072,6 +2244,11 @@ document.querySelectorAll('.tf-btn').forEach(b => b.onclick = () => switchTF(b.d
 document.querySelectorAll('.subchart-tab').forEach(t => t.onclick = () => switchSub(t.dataset.sub));
 // Exchange switcher
 document.querySelectorAll('.ex-btn').forEach(b => b.onclick = () => switchExchange(b.dataset.ex));
+// Mobile Kopfleiste aufbauen — ZWINGEND nach dem Registrieren der tf-btn- und
+// ex-btn-Handler: init() verschiebt diese Buttons in die Sheets, und ein
+// vorher verschobener Button wuerde von den obigen Selektoren nicht mehr
+// erfasst (Binance/Bybit und die Timeframes waeren auf Mobil ohne Funktion).
+MobileBars.init();
 
 // Volume Profile Toggles
 document.getElementById('vpToggle').onclick = function() {
@@ -2382,6 +2559,38 @@ init();
   <div class="ind-modal-foot">
     <button class="ind-btn primary" id="indManageAdd">+ Indikator hinzufügen</button>
   </div>
+</div>
+
+<!-- ══ MOBILE CHART-WERKZEUGE (Bottom-Sheet) ══ -->
+<div class="ind-backdrop" id="mToolsBackdrop"></div>
+<div class="ind-modal" id="mToolsModal">
+  <div class="ind-modal-head">
+    <div class="ind-modal-title">Chart-Werkzeuge</div>
+    <button class="ind-modal-close" id="mToolsClose">✕</button>
+  </div>
+  <!-- Die echten .chart-tools-Buttons werden hier hineinverschoben (nicht
+       kopiert), damit IDs eindeutig bleiben und alle Handler weiterlaufen. -->
+  <div class="m-tools-host" id="mToolsHost"></div>
+</div>
+
+<!-- ══ MOBILE TIMEFRAME-WAHL (Bottom-Sheet) ══ -->
+<div class="ind-backdrop" id="mTfBackdrop"></div>
+<div class="ind-modal" id="mTfModal">
+  <div class="ind-modal-head">
+    <div class="ind-modal-title">Timeframe</div>
+    <button class="ind-modal-close" id="mTfClose">✕</button>
+  </div>
+  <div class="m-tf-host" id="mTfHost"></div>
+</div>
+
+<!-- ══ MOBILE MARKTDATEN (Bottom-Sheet) ══ -->
+<div class="ind-backdrop" id="mStatsBackdrop"></div>
+<div class="ind-modal" id="mStatsModal">
+  <div class="ind-modal-head">
+    <div class="ind-modal-title">Marktdaten</div>
+    <button class="ind-modal-close" id="mStatsClose">✕</button>
+  </div>
+  <div class="m-stats-host" id="mStatsHost"></div>
 </div>
 
 <script src="/static/indicators/panel.js?v=3"></script>
