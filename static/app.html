@@ -112,6 +112,7 @@ body {
 .tf-btn:hover { background: var(--panel); color: var(--txt); }
 .tf-btn.active { background: var(--blue); color: #fff; }
 .tf-divider { width: 1px; height: 20px; background: var(--border); margin: 0 6px; }
+.chart-tools { display: contents; }
 .chart-type-btn { background: var(--panel); border: 1px solid var(--border); color: var(--muted);
   padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; }
 .chart-type-btn.active { color: var(--blue-lt); border-color: var(--blue); }
@@ -525,7 +526,10 @@ body.chart-fullscreen #chartFullscreenBtn { width: auto; min-width: 58px; paddin
   border-radius: 8px; background: var(--blue); color: #fff;
   font-size: 9px; font-weight: 800; display: grid; place-items: center; padding: 0 4px;
 }
-#indManageBtn.empty { display: none; }
+/* Ohne aktive Indikatoren bleibt der Button sichtbar (sonst ist die Funktion
+   nicht auffindbar), nur gedimmt und ohne Zaehler-Badge. */
+#indManageBtn.empty { opacity: .5; }
+#indManageBtn.empty .ind-count { display: none; }
 /* ── Indikator-Panel: Tablet & Mobile ─────────────────────────────────── */
 @media (max-width: 900px) {
   /* Aktions-Buttons ohne Hover immer sichtbar (Touch kennt kein :hover) */
@@ -588,17 +592,14 @@ body.chart-fullscreen #chartFullscreenBtn { width: auto; min-width: 58px; paddin
   .ind-legend { pointer-events: auto; }
   .ind-manage-row { padding: 12px 14px; min-height: 58px; }
   .ind-manage-acts button { min-width: 46px; min-height: 46px; font-size: 17px; }
-  #indManageBtn.empty { display: none; }
 }
 
 @media (max-width: 420px) {
   .ind-pane { height: 92px; }
   .ind-panes { max-height: 38dvh; }
-  /* Toolbar-Button auf Icon reduzieren, wie VP/Fullscreen */
-  #indBrowserBtn { font-size: 0; width: 38px; padding: 7px 0; justify-content: center; }
-  #indBrowserBtn::before { content: 'ƒ'; font-size: 17px; font-style: italic; font-weight: 700; }
-  #indManageBtn { font-size: 0; width: 38px; padding: 7px 0; justify-content: center; }
-  #indManageBtn::before { content: '☰'; font-size: 15px; font-weight: 700; }
+  /* Toolbar-Buttons behalten ihre Beschriftung — seit die Werkzeuge eine
+     eigene Zeile haben, ist genug Platz und 'ƒ' allein war zu kryptisch. */
+  .chart-tools .chart-type-btn { padding: 7px 9px; font-size: 11px; }
   .ind-field { flex-direction: column; align-items: stretch; gap: 6px; }
   .ind-field input[type="number"], .ind-field select { width: 100%; }
 }
@@ -725,6 +726,25 @@ button, .wl-item, .side-tab, .subchart-tab, .symbol-box { touch-action: manipula
   .icon-btn { width: 36px; height: 36px; }
   .tf-bar { height: 46px; padding: 0 8px; gap: 6px; overflow-x: auto; }
   .tf-btn, .chart-type-btn { min-height: 34px; padding: 7px 11px; }
+
+  /* Die Werkzeuge (Indikatoren, VP, POC/VA) lagen bisher hinter den 7
+     Timeframe-Buttons in derselben horizontal scrollenden Leiste — auf dem
+     Handy waren sie damit komplett ausserhalb des Bildschirms und ohne
+     Scroll-Hinweis unauffindbar. Sie bekommen deshalb eine eigene Zeile. */
+  .tf-bar {
+    height: auto; min-height: 46px; flex-wrap: wrap;
+    align-content: flex-start; padding: 5px 8px; overflow-x: visible;
+  }
+  .tf-bar .tf-divider { display: none; }
+  .chart-tools {
+    display: flex; align-items: center; gap: 6px;
+    flex-basis: 100%; width: 100%; order: 10;
+    padding-top: 5px; margin-top: 4px;
+    border-top: 1px solid rgba(35,40,56,.65);
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .chart-tools::-webkit-scrollbar { display: none; }
+  .chart-tools .chart-type-btn { flex-shrink: 0; }
   .main { min-height: 0; flex: 1; padding-bottom: calc(var(--bottom-nav-h) + var(--safe-bottom)); }
   .chart-area { width: 100%; min-width: 0; }
   .chart-main { min-height: 0; }
@@ -775,7 +795,7 @@ button, .wl-item, .side-tab, .subchart-tab, .symbol-box { touch-action: manipula
 @media (orientation: landscape) and (max-height: 520px) and (max-width: 920px) {
   .ticker-stats { display:none; }
   .topbar { min-height: 46px; }
-  .tf-bar { height: 40px; }
+  .tf-bar { height: auto; min-height: 40px; flex-wrap: wrap; }
   .subchart-wrap { height: 96px; }
   :root { --bottom-nav-h: 50px; }
 }
@@ -895,12 +915,14 @@ body.pwa-standalone #fullscreenBtn { display: inline-flex; }
   <button class="tf-btn" data-tf="4h">4h</button>
   <button class="tf-btn" data-tf="1d">1D</button>
   <div class="tf-divider"></div>
+  <div class="chart-tools" id="chartTools">
   <button class="chart-type-btn active" id="typeCandle" title="Kerzen">📊 Kerzen</button>
   <button class="chart-type-btn" id="indBrowserBtn" title="Indikatoren hinzufügen">ƒ Indikatoren</button>
   <button class="chart-type-btn empty" id="indManageBtn" title="Aktive Indikatoren verwalten">☰ Aktiv<span class="ind-count">0</span></button>
   <button class="chart-type-btn" id="vpToggle" title="Volume Profile">📊 VP</button>
   <button class="chart-type-btn" id="vahValToggle" title="POC / Value Area Linien">🎯 POC/VA</button>
   <button class="chart-type-btn fs-inline-btn" id="chartFullscreenTop" title="Chart Fullscreen">⛶ Fullscreen</button>
+  </div>
 </div>
 
 <!-- MAIN -->
@@ -1323,7 +1345,7 @@ async function loadSubChart() {
         lineColor: '#2962ff', topColor: 'rgba(41,98,255,.4)', bottomColor: 'rgba(41,98,255,.02)',
         lineWidth: 2, priceFormat: { type: 'custom', formatter: v => fmt.usd(v) },
       });
-      subSeries.setData(data.map(d => ({ time: toLocalTime(d.time), value: d.value })));
+      subSeries.setData(alignToMainTime(data.map(d => ({ time: toLocalTime(d.time), value: d.value }))));
     } else if (State.subType === 'funding') {
       const res = await fetch(`/api/funding_hist?symbol=${State.symbol}&limit=200&exchange=${State.exchange}`);
       const data = await res.json();
@@ -1350,7 +1372,7 @@ async function loadSubChart() {
           }
         }
       } catch(e) {}
-      subSeries.setData(fpoints);
+      subSeries.setData(alignToMainTime(fpoints));
     } else if (State.subType === 'ls') {
       const res = await fetch(`/api/ls_hist?symbol=${State.symbol}&period=${oiPeriod()}&limit=200&exchange=${State.exchange}`);
       const data = await res.json();
@@ -1358,10 +1380,12 @@ async function loadSubChart() {
         color: '#26a69a', lineWidth: 2,
         priceFormat: { type: 'custom', formatter: v => v.toFixed(1) + '%' },
       });
-      subSeries.setData(data.global.map(d => ({ time: toLocalTime(d.time), value: d.long })));
-      // baseline 50%
+      subSeries.setData(alignToMainTime(data.global.map(d => ({ time: toLocalTime(d.time), value: d.long }))));
+      // baseline 50% — über die volle Zeitachse des Haupt-Charts
       const base = subChart.addLineSeries({ color: '#787b86', lineWidth: 1, lineStyle: 2, crosshairMarkerVisible: false });
-      if (data.global.length) base.setData([
+      const lsTimes = mainChartTimes();
+      if (lsTimes.length) base.setData(lsTimes.map(t => ({ time: t, value: 50 })));
+      else if (data.global.length) base.setData([
         { time: toLocalTime(data.global[0].time), value: 50 },
         { time: toLocalTime(data.global[data.global.length-1].time), value: 50 }
       ]);
@@ -1372,10 +1396,12 @@ async function loadSubChart() {
         lineColor: '#5b8def', topColor: 'rgba(91,141,239,.35)', bottomColor: 'rgba(91,141,239,.02)',
         lineWidth: 2, priceFormat: { type: 'custom', formatter: v => fmt.compact(v) },
       });
-      subSeries.setData(data.map(d => ({ time: toLocalTime(d.time), value: d.cvd })));
-      // Nulllinie
+      subSeries.setData(alignToMainTime(data.map(d => ({ time: toLocalTime(d.time), value: d.cvd }))));
+      // Nulllinie — über die volle Zeitachse des Haupt-Charts
       const zero = subChart.addLineSeries({ color: '#787b86', lineWidth: 1, lineStyle: 2, crosshairMarkerVisible: false, lastValueVisible: false });
-      if (data.length) zero.setData([
+      const cvdTimes = mainChartTimes();
+      if (cvdTimes.length) zero.setData(cvdTimes.map(t => ({ time: t, value: 0 })));
+      else if (data.length) zero.setData([
         { time: toLocalTime(data[0].time), value: 0 }, { time: toLocalTime(data[data.length-1].time), value: 0 }
       ]);
     }
@@ -1397,6 +1423,42 @@ function oiPeriod() {
   // OI/LS gibt es nur in groberen Perioden
   const map = { '1m':'5m', '3m':'5m', '5m':'5m', '15m':'15m', '1h':'1h', '4h':'4h', '1d':'1d' };
   return map[State.tf] || '1h';
+}
+
+/** Zeitstempel ALLER Kerzen des Haupt-Charts (lokale Chart-Zeit, sortiert). */
+function mainChartTimes() {
+  return (State.candles || []).map(c => toLocalTime(c.time));
+}
+
+/** Reiht echte Datenpunkte in die Zeitachse des Haupt-Charts ein.
+ *
+ *  Hintergrund: setVisibleRange() klemmt in Lightweight Charts auf den
+ *  Datenbereich der jeweiligen Serie. OI/Funding/LS liefern deutlich weniger
+ *  und gröbere Punkte als die 500 Kerzen des Haupt-Charts — der Sub-Chart
+ *  konnte dessen Zeitfenster deshalb gar nicht darstellen und zeigte einen
+ *  eigenen, verschobenen Ausschnitt (z. B. 23:00-03:00 statt 18:00-03:00).
+ *
+ *  Mit Whitespace-Punkten (Zeit ohne value) kennt der Sub-Chart dieselbe
+ *  Zeit-Domain wie der Haupt-Chart und rastet exakt darauf ein. */
+function alignToMainTime(points) {
+  const times = mainChartTimes();
+  if (!times.length) return points;
+
+  const byTime = new Map();
+  points.forEach(p => byTime.set(p.time, p));
+
+  // Punkte, die vor der ersten Kerze liegen, würden die Achse nach links
+  // aufziehen — sie interessieren im sichtbaren Fenster nicht.
+  const first = times[0];
+  const merged = times.map(t => byTime.get(t) || { time: t });
+
+  // Datenpunkte, die exakt zwischen zwei Kerzen liegen (gröbere Periode,
+  // abweichende Settlement-Zeiten), gehen sonst verloren: separat anhängen.
+  const known = new Set(times);
+  points.forEach(p => { if (!known.has(p.time) && p.time >= first) merged.push(p); });
+
+  merged.sort((a, b) => a.time - b.time);
+  return merged;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -2322,7 +2384,7 @@ init();
   </div>
 </div>
 
-<script src="/static/indicators/panel.js?v=2"></script>
+<script src="/static/indicators/panel.js?v=3"></script>
 <script>
 // ════════════════════════════════════════════════════════════════════════════
 //  INDIKATOR-ENGINE BOOTSTRAP

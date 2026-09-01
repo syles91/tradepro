@@ -65,6 +65,21 @@
     if (r) { try { inst.paneChart.timeScale().setVisibleRange(r); } catch (e) {} }
   }
 
+  /** Reiht Indikator-Werte in die Zeitachse des Haupt-Charts ein.
+   *  Indikatoren mit Vorlauf (z. B. SMA 200) starten erst spaeter als die
+   *  erste Kerze — ohne Whitespace-Punkte klemmt setVisibleRange() das Pane
+   *  auf diesen kuerzeren Bereich und die Zeitlinie laeuft aus dem Tritt. */
+  function alignToChartTime(data) {
+    const candles = ctx.getCandles() || [];
+    if (!candles.length || !data.length) return data;
+    const byTime = new Map();
+    data.forEach(p => byTime.set(p.time, p));
+    return candles.map(c => {
+      const t = ctx.toLocalTime(c.time);
+      return byTime.get(t) || { time: t };
+    });
+  }
+
   function destroySeries(inst) {
     (inst.series || []).forEach(s => {
       try { (inst.paneChart || ctx.chart).removeSeries(s); } catch (e) {}
@@ -127,7 +142,7 @@
       if (def.pane === 'separate' && def.precision != null) {
         s.applyOptions({ priceFormat: { type: 'price', precision: def.precision, minMove: Math.pow(10, -def.precision) } });
       }
-      s.setData(data);
+      s.setData(def.pane === 'separate' ? alignToChartTime(data) : data);
       inst.series.push(s);
       const last = data[data.length - 1];
       if (last && !plot.noLegend) inst.lastValues[plot.key] = last.value;
