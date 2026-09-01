@@ -97,6 +97,12 @@ chk('.tf-bar entfaellt komplett', d.querySelector('.tf-bar') === null);
 chk('.topbar sichtbar', cs(d.querySelector('.topbar')).display !== 'none');
 // Der Preis-Trigger entfaellt bewusst — der Kurs steht dauerhaft unten.
 chk('Preis-Trigger existiert nicht mehr', d.getElementById('mStatsBtn') === null);
+// Der frei gewordene Platz oben links traegt jetzt den Exchange-Umschalter.
+chk('Exchange-Umschalter oben links sichtbar',
+  cs(d.getElementById('exchangeSwitch')).display !== 'none');
+chk('Exchange-Umschalter liegt in der Topbar',
+  d.querySelector('.topbar').contains(d.getElementById('exchangeSwitch')));
+chk('Marktdaten-Sheet ist entfallen', d.getElementById('mStatsModal') === null);
 chk('uebrige Trigger sichtbar',
   ['mTfBtn', 'mToolsBtn'].every(id => cs(d.getElementById(id)).display !== 'none'));
 
@@ -109,7 +115,7 @@ console.log('   #chartTools effektiv versteckt: ' + toolsHidden);
 console.log('   -> auf Mobil OK, solange MobileBars die Buttons ins Sheet verschiebt');
 
 console.log('── Sheets geschlossen: duerfen Chart nicht ueberlagern ──');
-['mToolsModal', 'mTfModal', 'mStatsModal'].forEach(id => {
+['mToolsModal', 'mTfModal'].forEach(id => {
   chk(id + ' -> display:none', cs(d.getElementById(id)).display === 'none', cs(d.getElementById(id)).display);
 });
 

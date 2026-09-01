@@ -68,7 +68,8 @@ chk('#chartTools liegt in der Topbar', !!tools.closest('.topbar'));
 chk('.tf-bar existiert nicht mehr', d.querySelector('.tf-bar') === null);
 
 // Die Sheet-Hosts duerfen den Chart nicht ueberlagern, solange sie zu sind.
-['mToolsModal', 'mTfModal', 'mStatsModal'].forEach(id => {
+// Nur noch zwei Sheets: Werkzeuge und Timeframe.
+['mToolsModal', 'mTfModal'].forEach(id => {
   chk(id + ' geschlossen -> display:none', cs(d.getElementById(id)).display === 'none');
 });
 

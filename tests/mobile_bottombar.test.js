@@ -165,11 +165,20 @@ setTimeout(() => {
     d.querySelectorAll('.topbar .stat').length === 0);
   chk('Preis-Trigger oben ist weg',
     d.getElementById('mStatsBtn') === null);
-  chk('Kennzahlen NICHT ins Sheet abgewandert',
-    d.querySelectorAll('#mStatsHost .stat').length === 0,
-    String(d.querySelectorAll('#mStatsHost .stat').length));
-  chk('Exchange-Umschalter bleibt im Sheet',
-    !!d.querySelector('#mStatsHost #exchangeSwitch'));
+  chk('Kennzahlen bleiben in der Bottom-Bar',
+    d.querySelectorAll('#bottomBar .stat').length === 7,
+    String(d.querySelectorAll('#bottomBar .stat').length));
+  // Die linke Seite der Topbar war mobil leer — dort steht jetzt der
+  // Exchange-Umschalter, statt im Sheet versteckt zu sein.
+  chk('Marktdaten-Sheet ist entfallen',
+    d.getElementById('mStatsModal') === null);
+  chk('Exchange-Umschalter steht oben links in der Topbar',
+    d.querySelector('.topbar').contains(d.getElementById('exchangeSwitch')));
+  chk('Exchange-Umschalter ist mobil sichtbar',
+    cs(d.getElementById('exchangeSwitch')).display !== 'none');
+  chk('Exchange-Umschalter steht vor den Werkzeugen',
+    !!(d.getElementById('exchangeSwitch')
+       .compareDocumentPosition(d.getElementById('chartTools')) & 4));
 
   console.log('── Symbol-Box & Timeframe unten ──');
   const sb = d.getElementById('symbolBox');

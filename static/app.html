@@ -867,8 +867,11 @@ button, .wl-item, .side-tab, .subchart-tab, .symbol-box { touch-action: manipula
     gap: 6px; flex-wrap: nowrap; overflow: hidden;
   }
   .brand { display: none; }               /* Platz für die Trigger */
-  .exchange-switch { display: none; }     /* liegt im Marktdaten-Sheet */
-  .ex-btn { min-height: 36px; padding: 8px 10px; font-size: 11px; }
+  /* Die linke Seite war mobil komplett leer. Der Exchange-Umschalter
+     nutzt sie jetzt sichtbar, statt im Marktdaten-Sheet zu verschwinden —
+     Binance/Bybit ist ein haeufiger Wechsel und war zwei Taps entfernt. */
+  .exchange-switch { display: flex; flex-shrink: 0; }
+  .ex-btn { min-height: 34px; padding: 7px 11px; font-size: 12px; }
   .symbol-box {
     height: 38px; padding: 0 8px; border-radius: 8px;
     border: 1px solid var(--border); background: var(--panel);
@@ -954,19 +957,6 @@ button, .wl-item, .side-tab, .subchart-tab, .symbol-box { touch-action: manipula
   }
   .m-tf-host .tf-btn.active,
   .m-tools-host .chart-type-btn.active { border-color: var(--blue); color: var(--blue-lt); background: var(--panel2); }
-  .m-stats-host {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-    padding: 14px 16px calc(14px + var(--safe-bottom));
-    overflow-y: auto;
-  }
-  .m-stats-host .stat {
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: 10px; padding: 10px 12px; gap: 3px;
-  }
-  .m-stats-host .stat-label { font-size: 9px; }
-  .m-stats-host .stat-value { font-size: 15px; }
-  .m-stats-host .exchange-switch { display: flex; grid-column: 1 / -1; margin: 0; }
-  .m-stats-host .ex-btn { flex: 1; min-height: 44px; font-size: 13px; }
 
   /* Platz fuer Mobile-Nav UND die daruebersitzende Bottom-Bar freihalten,
      sonst verdeckt die Leiste den unteren Rand des Charts. */
@@ -2473,7 +2463,6 @@ const MobileBars = (() => {
   const sheets = {
     tools: { modal: 'mToolsModal', backdrop: 'mToolsBackdrop' },
     tf:    { modal: 'mTfModal',    backdrop: 'mTfBackdrop' },
-    stats: { modal: 'mStatsModal', backdrop: 'mStatsBackdrop' },
   };
 
   function open(name) {
@@ -2490,11 +2479,11 @@ const MobileBars = (() => {
   }
   function closeAll() { Object.keys(sheets).forEach(close); }
 
-  /** Verschiebt Timeframes, Werkzeuge und Ticker-Stats in die Sheets. */
+  /** Verschiebt Timeframes und Werkzeuge in die Sheets. */
   function moveToSheets() {
     if (movedToSheets) return;
-    const tfHost = $('mTfHost'), toolsHost = $('mToolsHost'), statsHost = $('mStatsHost');
-    if (!tfHost || !toolsHost || !statsHost) return;
+    const tfHost = $('mTfHost'), toolsHost = $('mToolsHost');
+    if (!tfHost || !toolsHost) return;
 
     // Timeframes liegen jetzt in der Bottom-Bar (#bbTfs), nicht mehr in .tf-bar.
     document.querySelectorAll('#bbTfs .tf-btn').forEach(b => tfHost.appendChild(b));
@@ -2502,11 +2491,10 @@ const MobileBars = (() => {
     // Verschiebt ALLE Werkzeuge inkl. der Sub-Chart-Auswahl (#subSelect)
     // ins Sheet — sie ist ein Kind von #chartTools.
     if (tools) Array.from(tools.children).forEach(b => toolsHost.appendChild(b));
-    // Nur der Exchange-Umschalter wandert ins Sheet. Die Kennzahlen bleiben
-    // bewusst in der Bottom-Bar sichtbar — genau dort will man sie beim
-    // Traden sehen, statt sie erst aufklappen zu muessen.
-    const ex = $('exchangeSwitch');
-    if (ex) statsHost.appendChild(ex);
+    // Der Exchange-Umschalter bleibt oben links stehen — dort war mobil
+    // ohnehin Platz frei, und Binance/Bybit wechselt man haeufig genug,
+    // dass zwei Taps ueber ein Sheet zu viel waren. Die Kennzahlen
+    // bleiben aus demselben Grund in der Bottom-Bar sichtbar.
 
     movedToSheets = true;
   }
@@ -2514,19 +2502,14 @@ const MobileBars = (() => {
   /** Raeumt alles an seinen Desktop-Platz zurueck (Rotation / Resize). */
   function moveToBars() {
     if (!movedToSheets) return;
-    const bbTfs = $('bbTfs'), tools = $('chartTools'),
-          topbar = document.querySelector('.topbar');
-    if (!bbTfs || !tools || !topbar) return;
+    const bbTfs = $('bbTfs'), tools = $('chartTools');
+    if (!bbTfs || !tools) return;
 
     // Timeframes zurueck in die Bottom-Bar.
     document.querySelectorAll('#mTfHost .tf-btn').forEach(b => bbTfs.appendChild(b));
     Array.from($('mToolsHost').children).forEach(b => tools.appendChild(b));
-    const ex = $('exchangeSwitch');
-    // Exchange-Switch zurueck an seinen Platz: direkt VOR die Werkzeuge,
-    // also gleich hinter die Marke. Vor .topbar-right waere er hinter den
-    // Werkzeugen gelandet.
-    if (ex) topbar.insertBefore(ex, tools);
-    // Die Kennzahlen wurden nie verschoben — sie stehen durchgehend unten.
+    // Exchange-Switch und Kennzahlen werden nicht mehr verschoben: der
+    // Switch steht durchgehend oben links, die Kennzahlen unten.
 
     movedToSheets = false;
   }
@@ -2548,20 +2531,17 @@ const MobileBars = (() => {
     // Defensiv: laeuft init() zu frueh (Markup noch nicht geparst), wuerde
     // jeder Zugriff hier einen TypeError werfen und den restlichen Skriptblock
     // abbrechen — inklusive der Chart-Initialisierung. Lieber sauber warten.
-    if (!$('mToolsBtn') || !$('mToolsModal') || !$('mStatsHost')) {
+    if (!$('mToolsBtn') || !$('mToolsModal')) {
       document.addEventListener('DOMContentLoaded', init, { once: true });
       return;
     }
     $('mToolsBtn').onclick = () => open('tools');
     $('mTfBtn').onclick    = () => open('tf');
-    // mStatsBtn gibt es nicht mehr: Kurs und Kennzahlen stehen dauerhaft in
-    // der Bottom-Bar. Das Stats-Sheet bleibt (Exchange-Umschalter), wird aber
-    // nicht mehr ueber einen eigenen Trigger geoeffnet.
-    const statsBtn = $('mStatsBtn');
-    if (statsBtn) statsBtn.onclick = () => open('stats');
+    // Es gibt nur noch zwei Sheets: Werkzeuge und Timeframe. Kurs und
+    // Kennzahlen stehen dauerhaft in der Bottom-Bar, der Exchange-
+    // Umschalter oben links — beides braucht kein Sheet mehr.
     $('mToolsClose').onclick = () => close('tools');
     $('mTfClose').onclick    = () => close('tf');
-    $('mStatsClose').onclick = () => close('stats');
     Object.keys(sheets).forEach(n => { $(sheets[n].backdrop).onclick = () => close(n); });
 
     // Nach einer Auswahl schliesst sich das Sheet — der Nutzer will zurueck
@@ -2577,10 +2557,6 @@ const MobileBars = (() => {
       // einer Option schliessen — nicht schon beim Aufklappen des Menues.
       if (e.target.closest('.sub-opt')) close('tools');
     });
-    $('mStatsHost').addEventListener('click', e => {
-      if (e.target.closest('.ex-btn')) close('stats');
-    });
-
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAll(); });
 
     // matchMedia statt resize: feuert nur beim echten Breakpoint-Wechsel.
@@ -3504,15 +3480,9 @@ if (document.readyState === 'loading') {
   <div class="m-tf-host" id="mTfHost"></div>
 </div>
 
-<!-- ══ MOBILE MARKTDATEN (Bottom-Sheet) ══ -->
-<div class="m-sheet-backdrop" id="mStatsBackdrop"></div>
-<div class="m-sheet" id="mStatsModal">
-  <div class="m-sheet-head">
-    <div class="m-sheet-title">Marktdaten</div>
-    <button class="m-sheet-close" id="mStatsClose">✕</button>
-  </div>
-  <div class="m-stats-host" id="mStatsHost"></div>
-</div>
+<!-- Das Marktdaten-Sheet ist entfallen: die Kennzahlen stehen dauerhaft in
+     der Bottom-Bar, der Exchange-Umschalter oben links. Es blieb nichts
+     uebrig, was es haette anzeigen koennen. -->
 
 <script src="/static/indicators/panel.js?v=3"></script>
 <script>

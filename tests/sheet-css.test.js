@@ -27,8 +27,8 @@ const dom = new JSDOM(html, { pretendToBeVisual: true });
 const w = dom.window, d = w.document;
 const cs = el => w.getComputedStyle(el);
 
-const sheets = ['mToolsModal', 'mTfModal', 'mStatsModal'];
-const backs = ['mToolsBackdrop', 'mTfBackdrop', 'mStatsBackdrop'];
+const sheets = ['mToolsModal', 'mTfModal'];
+const backs = ['mToolsBackdrop', 'mTfBackdrop'];
 
 console.log('── Grundzustand: Sheets geschlossen ──');
 sheets.forEach(id => {
@@ -59,22 +59,25 @@ backs.forEach(id => {
 console.log('── Kernregression: Inhalte duerfen nicht dauerhaft versteckt sein ──');
 // Ein geoeffnetes Sheet muss seinen Host UND die darin liegenden Kennzahlen
 // sichtbar machen. Genau das war zuvor gebrochen.
-const stats = d.getElementById('mStatsModal');
-stats.classList.add('open');
-const host = d.getElementById('mStatsHost');
-chk('Stats-Host im offenen Sheet sichtbar', cs(host).display !== 'none', 'display=' + cs(host).display);
+// Das Marktdaten-Sheet ist entfallen (Kennzahlen stehen dauerhaft unten,
+// der Exchange-Umschalter oben links). Geprueft wird jetzt am
+// Werkzeug-Sheet, in das MobileBars zur Laufzeit verschiebt.
+const toolsSheet = d.getElementById('mToolsModal');
+toolsSheet.classList.add('open');
+const host = d.getElementById('mToolsHost');
+chk('Werkzeug-Host im offenen Sheet sichtbar', cs(host).display !== 'none', 'display=' + cs(host).display);
 
-// Kennzahl testweise ins Sheet haengen (wie MobileBars es zur Laufzeit tut)
-const price = d.getElementById('tPrice');
-host.appendChild(price.closest('.stat'));
-chk('Kennzahl im offenen Sheet sichtbar', cs(price).display !== 'none', 'display=' + cs(price).display);
-let el = price, hidden = null;
+// Werkzeug testweise ins Sheet haengen (wie MobileBars es zur Laufzeit tut)
+const tool = d.getElementById('lhToggle');
+host.appendChild(tool);
+chk('Werkzeug im offenen Sheet sichtbar', cs(tool).display !== 'none', 'display=' + cs(tool).display);
+let el = tool, hidden = null;
 while (el && el !== d.body) {
   if (cs(el).display === 'none') { hidden = el.id || el.className; break; }
   el = el.parentElement;
 }
-chk('kein Vorfahre der Kennzahl ist display:none', !hidden, 'versteckt durch: ' + hidden);
-stats.classList.remove('open');
+chk('kein Vorfahre des Werkzeugs ist display:none', !hidden, 'versteckt durch: ' + hidden);
+toolsSheet.classList.remove('open');
 
 console.log('── Keine Klassenkollision mit dem Indikator-Panel ──');
 sheets.concat(backs).forEach(id => {

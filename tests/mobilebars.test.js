@@ -54,15 +54,17 @@ w.eval(`
 
 const tfHost = d.getElementById('mTfHost');
 const toolsHost = d.getElementById('mToolsHost');
-const statsHost = d.getElementById('mStatsHost');
+// Das Marktdaten-Sheet ist entfallen: Kennzahlen stehen dauerhaft in der
+// Bottom-Bar, der Exchange-Umschalter oben links in der Topbar.
 
 // ── Mobil: alles in den Sheets? ──
 chk('7 Timeframes im TF-Sheet', tfHost.querySelectorAll('.tf-btn').length === 7);
 chk('7 Werkzeuge im Tools-Sheet', toolsHost.querySelectorAll('.chart-type-btn').length === 7);
-// Die Kennzahlen wandern NICHT mehr ins Sheet — sie bleiben dauerhaft
-// in der Bottom-Bar sichtbar. Im Sheet steht nur noch der Exchange-Switch.
-chk('keine Kennzahlen im Stats-Sheet', statsHost.querySelectorAll('.stat').length === 0);
-chk('Exchange-Switch im Stats-Sheet', !!statsHost.querySelector('#exchangeSwitch'));
+// Weder Kennzahlen noch Exchange-Umschalter wandern ins Sheet.
+chk('Exchange-Umschalter bleibt in der Topbar',
+  d.querySelector('.topbar').contains(d.getElementById('exchangeSwitch')));
+chk('Marktdaten-Sheet existiert nicht mehr',
+  d.getElementById('mStatsModal') === null);
 chk('Bottom-Bar TFs sind leer', d.querySelectorAll('#bbTfs .tf-btn').length === 0);
 chk('Kennzahlen bleiben in der Bottom-Bar',
   d.querySelectorAll('#bottomBar .stat').length === 7,
@@ -79,8 +81,9 @@ chk('keine doppelten IDs' + (dupes.length ? ' (' + dupes + ')' : ''), dupes.leng
 // ── Handler ueberleben den Umzug ──
 tfHost.querySelector('[data-tf="1h"]').click();
 chk('TF-Klick im Sheet feuert Handler', clicks.includes('tf:1h'));
-statsHost.querySelector('[data-ex="bybit"]').click();
-chk('Exchange-Klick im Sheet feuert Handler', clicks.includes('ex:bybit'));
+// Der Exchange-Umschalter bleibt oben links in der Topbar stehen.
+d.getElementById('exchangeSwitch').querySelector('[data-ex="bybit"]').click();
+chk('Exchange-Klick in der Topbar feuert Handler', clicks.includes('ex:bybit'));
 toolsHost.querySelector('#vpToggle').click();
 chk('Werkzeug-Klick im Sheet feuert Handler', clicks.includes('vp'));
 
@@ -92,11 +95,10 @@ chk('Tools-Sheet oeffnet', d.getElementById('mToolsModal').classList.contains('o
 chk('TF-Sheet schliesst dabei (nie zwei offen)', !d.getElementById('mTfModal').classList.contains('open'));
 d.getElementById('mToolsClose').click();
 chk('Tools-Sheet schliesst per X', !d.getElementById('mToolsModal').classList.contains('open'));
-// Das Stats-Sheet hat keinen eigenen Trigger mehr (Kurs steht unten);
-// es wird direkt geoeffnet, um das Backdrop-Verhalten zu pruefen.
-d.getElementById('mStatsModal').classList.add('open');
-d.getElementById('mStatsBackdrop').click();
-chk('Stats-Sheet schliesst per Backdrop', !d.getElementById('mStatsModal').classList.contains('open'));
+// Backdrop-Verhalten am verbleibenden TF-Sheet pruefen.
+d.getElementById('mTfModal').classList.add('open');
+d.getElementById('mTfBackdrop').click();
+chk('Sheet schliesst per Backdrop', !d.getElementById('mTfModal').classList.contains('open'));
 
 d.getElementById('mTfBtn').click();
 tfHost.querySelector('[data-tf="4h"]').click();
@@ -126,10 +128,10 @@ const css = html.match(/<style[^>]*>([\s\S]*?)<\/style>/)[1];
 const cssHas = re => re.test(css);
 
 chk('Sheets nutzen eigene Klasse .m-sheet (nicht .ind-modal)',
-  [...d.querySelectorAll('#mToolsModal, #mTfModal, #mStatsModal')]
+  [...d.querySelectorAll('#mToolsModal, #mTfModal')]
     .every(e => e.classList.contains('m-sheet') && !e.classList.contains('ind-modal')));
 chk('Backdrops nutzen .m-sheet-backdrop (nicht .ind-backdrop)',
-  [...d.querySelectorAll('#mToolsBackdrop, #mTfBackdrop, #mStatsBackdrop')]
+  [...d.querySelectorAll('#mToolsBackdrop, #mTfBackdrop')]
     .every(e => e.classList.contains('m-sheet-backdrop') && !e.classList.contains('ind-backdrop')));
 chk('CSS definiert .m-sheet.open mit display', cssHas(/\.m-sheet\.open\s*\{[^}]*display:\s*flex/));
 chk('CSS definiert .m-sheet-backdrop.open mit display', cssHas(/\.m-sheet-backdrop\.open\s*\{[^}]*display:\s*block/));
@@ -138,7 +140,7 @@ chk('CSS definiert .m-sheet Grundzustand display:none', cssHas(/\.m-sheet\s*\{[^
 // Die Hosts duerfen NICHT in einem per style.display gesteuerten Container
 // haengen — sonst waeren die verschobenen Elemente unerreichbar.
 chk('Hosts liegen in .m-sheet-Containern',
-  ['mToolsHost', 'mTfHost', 'mStatsHost']
+  ['mToolsHost', 'mTfHost']
     .every(id => d.getElementById(id).closest('.m-sheet')));
 
 // ── Datenfluss: Kennzahlen bleiben per ID erreichbar, auch im Sheet ───────
@@ -159,7 +161,7 @@ chk('Desktop: Timeframes zurueck in die Bottom-Bar', d.querySelectorAll('#bbTfs 
 chk('Desktop: Werkzeuge zurueck in chart-tools', d.querySelectorAll('#chartTools .chart-type-btn').length === 7);
 chk('Desktop: Kennzahlen weiterhin in der Bottom-Bar', d.querySelectorAll('#bottomBar .stat').length === 7);
 chk('Desktop: Exchange zurueck in Topbar', !!d.querySelector('.topbar > #exchangeSwitch'));
-chk('Desktop: Sheets leer', tfHost.children.length === 0 && statsHost.children.length === 0 && toolsHost.children.length === 0);
+chk('Desktop: Sheets leer', tfHost.children.length === 0 && toolsHost.children.length === 0);
 chk('Desktop: TF-Reihenfolge korrekt',
   [...d.querySelectorAll('#bbTfs .tf-btn')].map(b => b.dataset.tf).join(',') === '1m,3m,5m,15m,1h,4h,1d');
 chk('Desktop: Bottom-Bar mit Kennzahlen, Symbol, TF-Trigger und TFs',

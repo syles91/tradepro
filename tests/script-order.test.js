@@ -50,8 +50,8 @@ entryCalls.forEach(call => {
 // mStatsBtn entfaellt: Kurs/Kennzahlen stehen dauerhaft in der Bottom-Bar.
 // mStatsBtn entfaellt: Kurs/Kennzahlen stehen dauerhaft in der Bottom-Bar.
 const sheetIds = ['mToolsBtn', 'mTfBtn', 'mToolsModal', 'mTfModal',
-                  'mStatsModal', 'mToolsHost', 'mTfHost', 'mStatsHost',
-                  'mToolsBackdrop', 'mTfBackdrop', 'mStatsBackdrop'];
+                  'mToolsHost', 'mTfHost',
+                  'mToolsBackdrop', 'mTfBackdrop'];
 
 const initCallIdx = html.lastIndexOf('\ninit();');
 const appInitLine = lineOf(initCallIdx);
