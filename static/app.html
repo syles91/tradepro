@@ -101,6 +101,38 @@ body {
 /* Mobile-Trigger: auf dem Desktop komplett aus. */
 .m-trigger { display: none; }
 
+/* ── Mobile Bottom-Sheets ──────────────────────────────────────────────────
+   Bewusst EIGENE Klassen statt der .ind-modal-Klassen des Indikator-Panels:
+   jene werden ueber style.display gesteuert und waeren hier dauerhaft
+   display:none geblieben — inklusive der hineinverschobenen Timeframes und
+   Ticker-Kennzahlen. Diese Sheets schalten ueber die Klasse .open. */
+.m-sheet-backdrop {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.58); z-index: 540; backdrop-filter: blur(3px);
+}
+.m-sheet-backdrop.open { display: block; }
+.m-sheet {
+  display: none; position: fixed; left: 0; right: 0; bottom: 0;
+  flex-direction: column;
+  max-height: min(72dvh, 620px);
+  background: var(--bg2); border-top: 1px solid var(--border);
+  border-radius: 18px 18px 0 0;
+  z-index: 550; box-shadow: 0 -18px 60px rgba(0,0,0,.6);
+  overflow: hidden;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.m-sheet.open { display: flex; animation: mSheetUp .22s cubic-bezier(.2,.8,.3,1); }
+@keyframes mSheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.m-sheet-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.m-sheet-title { font-size: 14px; font-weight: 800; }
+.m-sheet-close {
+  background: none; border: 0; color: var(--muted);
+  font-size: 20px; cursor: pointer; padding: 4px 8px; line-height: 1;
+}
+
 /* ════════ TIMEFRAME BAR ════════ */
 .tf-bar {
   display: flex; align-items: center; gap: 4px;
@@ -2562,11 +2594,11 @@ init();
 </div>
 
 <!-- ══ MOBILE CHART-WERKZEUGE (Bottom-Sheet) ══ -->
-<div class="ind-backdrop" id="mToolsBackdrop"></div>
-<div class="ind-modal" id="mToolsModal">
-  <div class="ind-modal-head">
-    <div class="ind-modal-title">Chart-Werkzeuge</div>
-    <button class="ind-modal-close" id="mToolsClose">✕</button>
+<div class="m-sheet-backdrop" id="mToolsBackdrop"></div>
+<div class="m-sheet" id="mToolsModal">
+  <div class="m-sheet-head">
+    <div class="m-sheet-title">Chart-Werkzeuge</div>
+    <button class="m-sheet-close" id="mToolsClose">✕</button>
   </div>
   <!-- Die echten .chart-tools-Buttons werden hier hineinverschoben (nicht
        kopiert), damit IDs eindeutig bleiben und alle Handler weiterlaufen. -->
@@ -2574,21 +2606,21 @@ init();
 </div>
 
 <!-- ══ MOBILE TIMEFRAME-WAHL (Bottom-Sheet) ══ -->
-<div class="ind-backdrop" id="mTfBackdrop"></div>
-<div class="ind-modal" id="mTfModal">
-  <div class="ind-modal-head">
-    <div class="ind-modal-title">Timeframe</div>
-    <button class="ind-modal-close" id="mTfClose">✕</button>
+<div class="m-sheet-backdrop" id="mTfBackdrop"></div>
+<div class="m-sheet" id="mTfModal">
+  <div class="m-sheet-head">
+    <div class="m-sheet-title">Timeframe</div>
+    <button class="m-sheet-close" id="mTfClose">✕</button>
   </div>
   <div class="m-tf-host" id="mTfHost"></div>
 </div>
 
 <!-- ══ MOBILE MARKTDATEN (Bottom-Sheet) ══ -->
-<div class="ind-backdrop" id="mStatsBackdrop"></div>
-<div class="ind-modal" id="mStatsModal">
-  <div class="ind-modal-head">
-    <div class="ind-modal-title">Marktdaten</div>
-    <button class="ind-modal-close" id="mStatsClose">✕</button>
+<div class="m-sheet-backdrop" id="mStatsBackdrop"></div>
+<div class="m-sheet" id="mStatsModal">
+  <div class="m-sheet-head">
+    <div class="m-sheet-title">Marktdaten</div>
+    <button class="m-sheet-close" id="mStatsClose">✕</button>
   </div>
   <div class="m-stats-host" id="mStatsHost"></div>
 </div>

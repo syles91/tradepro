@@ -109,6 +109,42 @@ chk('Aenderung rot bei Minus', d.getElementById('mStatsBtnChg').className.includ
 w.MobileBars.updateTriggers({ price: 43000, change: 2.1 });
 chk('Aenderung gruen bei Plus', d.getElementById('mStatsBtnChg').className.includes('green'));
 
+// ── CSS-Vertrag der Sheets ────────────────────────────────────────────────
+// Regressionsschutz: die Sheets wurden anfangs mit den .ind-modal-Klassen des
+// Indikator-Panels gebaut. Jene schalten ueber style.display, nicht ueber
+// .open — die Sheets blieben deshalb dauerhaft display:none und mit ihnen
+// ALLE hineinverschobenen Kennzahlen und Timeframes. Das sah aus, als wuerden
+// die Daten nicht laden. Diese Pruefungen halten den Vertrag fest.
+const css = html.match(/<style[^>]*>([\s\S]*?)<\/style>/)[1];
+const cssHas = re => re.test(css);
+
+chk('Sheets nutzen eigene Klasse .m-sheet (nicht .ind-modal)',
+  [...d.querySelectorAll('#mToolsModal, #mTfModal, #mStatsModal')]
+    .every(e => e.classList.contains('m-sheet') && !e.classList.contains('ind-modal')));
+chk('Backdrops nutzen .m-sheet-backdrop (nicht .ind-backdrop)',
+  [...d.querySelectorAll('#mToolsBackdrop, #mTfBackdrop, #mStatsBackdrop')]
+    .every(e => e.classList.contains('m-sheet-backdrop') && !e.classList.contains('ind-backdrop')));
+chk('CSS definiert .m-sheet.open mit display', cssHas(/\.m-sheet\.open\s*\{[^}]*display:\s*flex/));
+chk('CSS definiert .m-sheet-backdrop.open mit display', cssHas(/\.m-sheet-backdrop\.open\s*\{[^}]*display:\s*block/));
+chk('CSS definiert .m-sheet Grundzustand display:none', cssHas(/\.m-sheet\s*\{[^}]*display:\s*none/));
+
+// Die Hosts duerfen NICHT in einem per style.display gesteuerten Container
+// haengen — sonst waeren die verschobenen Elemente unerreichbar.
+chk('Hosts liegen in .m-sheet-Containern',
+  ['mToolsHost', 'mTfHost', 'mStatsHost']
+    .every(id => d.getElementById(id).closest('.m-sheet')));
+
+// ── Datenfluss: Kennzahlen bleiben per ID erreichbar, auch im Sheet ───────
+// updateTicker() adressiert ueber getElementById. Waeren die Knoten beim
+// Verschieben verloren gegangen oder dupliziert, liefe die Kursanzeige leer.
+chk('Kennzahl-IDs nach Umzug erreichbar',
+  ['tPrice', 'tChange', 'tHigh', 'tLow', 'tVol', 'tOi', 'tFunding']
+    .every(id => !!d.getElementById(id)));
+chk('Kennzahl-Knoten liegen im Stats-Sheet',
+  ['tPrice', 'tOi'].every(id => statsHost.contains(d.getElementById(id))));
+d.getElementById('tPrice').textContent = '43210';
+chk('Kennzahl im Sheet beschreibbar', d.getElementById('tPrice').textContent === '43210');
+
 // ── Rotation zu Desktop: alles zurueck an seinen Platz ──
 MOBILE = false;
 listeners.forEach(fn => fn());
