@@ -79,7 +79,9 @@ setTimeout(() => {
   const sel = d.getElementById('subSelect');
   const btn = d.getElementById('subSelectBtn');
   const menu = d.getElementById('subMenu');
-  const bar = d.getElementById('subTabs');
+  // Die eigene Sub-Leiste ist entfallen; die Auswahl sitzt in der
+  // Chart-Werkzeugleiste (.tf-bar > #chartTools).
+  const bar = d.getElementById('tfBar');
 
   // Kernursache: die Leiste darf das absolut positionierte Menue nicht clippen.
   const ov = cs(bar).overflow, ovx = cs(bar).overflowX;
@@ -91,7 +93,7 @@ setTimeout(() => {
   chk('Klick oeffnet das Menue', sel.classList.contains('open'));
   chk('Menue ist nun sichtbar', cs(menu).display === 'block', cs(menu).display);
   chk('aria-expanded=true', btn.getAttribute('aria-expanded') === 'true');
-  chk('Menue oeffnet nach oben', cs(menu).bottom !== 'auto' && cs(menu).bottom !== '');
+  chk('Menue oeffnet nach unten', cs(menu).top !== 'auto' && cs(menu).top !== '');
   chk('alle 5 Optionen erreichbar', d.querySelectorAll('#subMenu .sub-opt').length === 5);
 
   // Auswahl wirklich durchfuehren
@@ -126,6 +128,14 @@ setTimeout(() => {
   }
   const blocks = mediaBlocks(html);
   const mobileCss = blocks.find(b => /\.bottom-bar\s*\{/.test(b)) || '';
+  function mediaRule(sel) {
+    const esc = sel.replace('.', '\\.');
+    for (const b of mediaBlocks(html)) {
+      const m = b.match(new RegExp(esc + '\\s*\\{([^}]*)\\}'));
+      if (m) return m[1];
+    }
+    return '';
+  }
   const bbRule = (mobileCss.match(/\.bottom-bar\s*\{([^}]*)\}/) || [, ''])[1];
   chk('Mobil-Block mit .bottom-bar gefunden', mobileCss.length > 0,
     blocks.length + ' Bloecke durchsucht');
@@ -173,16 +183,56 @@ setTimeout(() => {
   chk('Bar clippt das Symbol-Menue nicht (mobil)',
     !/overflow-x:\s*auto/.test(bbRule) && !/overflow:\s*hidden/.test(bbRule),
     bbRule.trim());
+  // Desktop-Regel: klappt nach oben auf (Box sitzt unten).
   const ddRule = (html.match(/\.dropdown\s*\{([^}]*)\}/) || [, ''])[1];
   chk('Symbol-Dropdown klappt nach OBEN auf', /bottom:\s*calc\(100%/.test(ddRule), ddRule.trim());
   chk('Symbol-Dropdown nicht mehr top-verankert', !/top:\s*52px/.test(ddRule));
+  chk('Suchfeld vorhanden', !!d.getElementById('symbolSearch'));
 
-  const dd = d.getElementById('symbolDropdown');
-  chk('Symbol-Menue startet geschlossen', !dd.classList.contains('show'));
-  sb.click();
-  chk('Klick oeffnet das Symbol-Menue', dd.classList.contains('show'));
-  chk('Symbol-Menue ist sichtbar', cs(dd).display === 'block', cs(dd).display);
-  chk('Suchfeld erreichbar', !!d.getElementById('symbolSearch'));
+  console.log('── Symbol-Fenster mobil (Tastatur-Bug) ──');
+  // Kern des Bugs: .dropdown stand mobil auf top:54px, waehrend die
+  // Symbol-Box unten sitzt -> Liste ausserhalb des Sichtfelds, nur Tastatur.
+  const ddMobile = mediaRule('.dropdown');
+  chk('Symbol-Fenster ist nicht mehr oben verankert',
+    !/top:\s*54px/.test(ddMobile), ddMobile.trim());
+  chk('Symbol-Fenster klappt von UNTEN auf',
+    /bottom:\s*calc\(/.test(ddMobile) && /top:\s*auto/.test(ddMobile));
+  chk('sitzt oberhalb von Bottom-Bar und Nav',
+    /--bottom-nav-h/.test(ddMobile) && /--bottom-bar-h/.test(ddMobile));
+  chk('Hoehe auf freien Platz begrenzt', /max-height:/.test(ddMobile));
+
+  // Kein Autofokus mobil: sonst schiebt sich die Tastatur ueber die Liste.
+  chk('kein Autofokus des Suchfelds auf dem Handy',
+    /matchMedia\('\(max-width: 820px\)'\)\.matches/.test(html) &&
+    /if \(!window\.matchMedia/.test(html));
+
+  const dd2 = d.getElementById('symbolDropdown');
+  const sb2 = d.getElementById('symbolBox');
+  chk('Symbolliste startet geschlossen', !dd2.classList.contains('show'));
+  sb2.click();
+  chk('Antippen oeffnet die Symbolliste', dd2.classList.contains('show'));
+  chk('Liste ist sichtbar', cs(dd2).display === 'block', cs(dd2).display);
+  chk('Suchfeld hat NICHT automatisch den Fokus',
+    d.activeElement !== d.getElementById('symbolSearch'),
+    String(d.activeElement && d.activeElement.id));
+  d.getElementById('chartTools').dispatchEvent(
+    new w.MouseEvent('click', { bubbles: true }));
+  chk('Klick daneben schliesst wieder', !dd2.classList.contains('show'));
+
+  console.log('── Sub-Auswahl oben bei den Werkzeugen ──');
+  chk('alte Sub-Leiste existiert nicht mehr', d.getElementById('subTabs') === null);
+  // Mobil hat MobileBars die Werkzeuge bereits ins Werkzeug-Sheet geraeumt —
+  // die Auswahl faehrt als Kind von #chartTools automatisch mit.
+  chk('Auswahl mobil im Werkzeug-Sheet',
+    d.getElementById('mToolsHost').contains(d.getElementById('subSelect')));
+  chk('Auswahl auf dem Desktop in #chartTools',
+    /<div class="chart-tools" id="chartTools">[\s\S]{0,1200}id="subSelect"/.test(html));
+  chk('Auswahl im Sheet schliesst das Sheet',
+    /closest\('\.sub-opt'\)\) close\('tools'\)/.test(html));
+  chk('CVD weiterhin waehlbar',
+    !!d.querySelector('.sub-opt[data-sub="cvd"]'));
+  chk('Funding weiterhin waehlbar',
+    !!d.querySelector('.sub-opt[data-sub="funding"]'));
 
   console.log('── Kein Ueberlappen mit der Mobile-Nav ──');
   chk('Chart reserviert Platz fuer Nav + Bottom-Bar',

@@ -133,21 +133,23 @@ console.log('── Dropdown: CSS-Verhalten ──');
 chk('Menue ist geschlossen unsichtbar', cs(menu).display === 'none');
 chk('.sub-select ist Positions-Anker', cs(sel).position === 'relative');
 chk('Menue ist absolut positioniert', cs(menu).position === 'absolute');
-chk('Menue oeffnet nach OBEN (bottom gesetzt)',
-  cs(menu).bottom !== 'auto' && cs(menu).bottom !== '',
-  'nach unten waere am Bildschirmrand kein Platz');
+// Die Auswahl sitzt jetzt oben in der Werkzeugleiste -> Menue klappt nach UNTEN.
+chk('Menue oeffnet nach UNTEN (top gesetzt)',
+  cs(menu).top !== 'auto' && cs(menu).top !== '',
+  'die Werkzeugleiste sitzt oben am Bildschirm');
 chk('Menue liegt ueber dem Chart', parseInt(cs(menu).zIndex, 10) >= 20,
   cs(menu).zIndex);
-// Regression: overflow:auto auf der Leiste schnitt das aufklappende Menue ab,
-// dadurch liess sich das Dropdown auf dem Handy nicht oeffnen.
-chk('Leiste clippt das Menue nicht',
-  cs(d.getElementById('subTabs')).overflow !== 'auto' &&
-  cs(d.getElementById('subTabs')).overflow !== 'hidden',
-  cs(d.getElementById('subTabs')).overflow);
-chk('auch mobil kein overflow-Clipping',
-  !/@media[^{]*max-width:\s*820px[\s\S]{0,4000}\.subchart-tabs\s*\{[^}]*overflow-x:\s*auto/.test(html));
-chk('kein globales overflow-x:auto mehr auf .subchart-tabs',
-  !/\.subchart-tabs\s*\{\s*overflow-x:\s*auto/.test(html));
+// Regression: overflow auf der umgebenden Leiste schnitt das aufklappende
+// Menue ab, dadurch liess es sich nicht oeffnen. Jetzt scrollt nur der
+// innere Werkzeug-Container.
+const tfBarRule = (html.match(/\.tf-bar\s*\{([^}]*)\}/) || [, ''])[1];
+chk('Werkzeugleiste clippt das Menue nicht',
+  !/overflow-x:\s*auto/.test(tfBarRule) && !/overflow:\s*hidden/.test(tfBarRule),
+  tfBarRule.trim());
+chk('stattdessen scrollt der Werkzeug-Container',
+  /\.chart-tools\s*\{[^}]*overflow-x:\s*auto/.test(html));
+chk('alte Sub-Leiste ist ganz entfallen', d.getElementById('subTabs') === null);
+chk('keine .subchart-tabs-Regeln mehr', !/\.subchart-tabs\s*\{/.test(html));
 sel.classList.add('open');
 chk('geoeffnet wird das Menue sichtbar', cs(menu).display === 'block');
 sel.classList.remove('open');
