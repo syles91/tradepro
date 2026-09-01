@@ -93,16 +93,18 @@ chk('.ticker-stats sichtbar (steht jetzt in der Bottom-Bar)',
 chk('.bottom-bar sichtbar', cs(d.getElementById('bottomBar')).display !== 'none');
 chk('.ticker-stats liegt NICHT mehr in der Topbar',
   !d.querySelector('.topbar').contains(d.querySelector('.ticker-stats')));
-chk('.tf-bar ausgeblendet', cs(d.querySelector('.tf-bar')).display === 'none');
+chk('.tf-bar entfaellt komplett', d.querySelector('.tf-bar') === null);
 chk('.topbar sichtbar', cs(d.querySelector('.topbar')).display !== 'none');
 // Der Preis-Trigger entfaellt bewusst — der Kurs steht dauerhaft unten.
 chk('Preis-Trigger existiert nicht mehr', d.getElementById('mStatsBtn') === null);
 chk('uebrige Trigger sichtbar',
   ['mTfBtn', 'mToolsBtn'].every(id => cs(d.getElementById(id)).display !== 'none'));
 
-console.log('── KRITISCH: #chartTools liegt in der versteckten .tf-bar ──');
+console.log('── KRITISCH: #chartTools in der Topbar ──');
 const tools = d.getElementById('chartTools');
-const toolsHidden = cs(tools).display === 'none' || cs(tools.closest('.tf-bar')).display === 'none';
+// Mobil raeumt MobileBars die Buttons ins Sheet; der leere Container
+// wird per .chart-tools:empty ausgeblendet.
+const toolsHidden = cs(tools).display === 'none' || tools.children.length === 0;
 console.log('   #chartTools effektiv versteckt: ' + toolsHidden);
 console.log('   -> auf Mobil OK, solange MobileBars die Buttons ins Sheet verschiebt');
 

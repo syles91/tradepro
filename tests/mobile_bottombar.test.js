@@ -79,14 +79,14 @@ setTimeout(() => {
   const sel = d.getElementById('subSelect');
   const btn = d.getElementById('subSelectBtn');
   const menu = d.getElementById('subMenu');
-  // Die eigene Sub-Leiste ist entfallen; die Auswahl sitzt in der
-  // Chart-Werkzeugleiste (.tf-bar > #chartTools).
-  const bar = d.getElementById('tfBar');
-
-  // Kernursache: die Leiste darf das absolut positionierte Menue nicht clippen.
-  const ov = cs(bar).overflow, ovx = cs(bar).overflowX;
-  chk('Leiste clippt nicht (overflow)', ov !== 'hidden' && ov !== 'auto', 'overflow=' + ov);
-  chk('Leiste clippt nicht (overflow-x)', ovx !== 'hidden' && ovx !== 'auto', 'overflow-x=' + ovx);
+  // Die Werkzeuge sitzen jetzt in der Topbar; #chartTools scrollt
+  // horizontal. Weil overflow-x:auto laut Spec auch overflow-y:auto
+  // erzwingt, wird das Menue beim Oeffnen per JS auf position:fixed
+  // gesetzt — sonst wuerde es am Rand der Leiste abgeschnitten.
+  chk('Menue wird aus dem Scroll-Container geloest',
+    /menu\.style\.position = 'fixed'/.test(html));
+  chk('Position wird beim Oeffnen gesetzt',
+    /if \(open\) positionSubMenu\(\)/.test(html));
 
   chk('Menue startet geschlossen', cs(menu).display === 'none');
   btn.click();

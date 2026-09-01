@@ -133,21 +133,22 @@ body {
   font-size: 20px; cursor: pointer; padding: 4px 8px; line-height: 1;
 }
 
-/* ════════ TIMEFRAME BAR ════════ */
-.tf-bar {
+/* ════════ CHART-WERKZEUGE (in der Topbar, linke Seite) ════════
+   Die eigene Werkzeugzeile .tf-bar ist entfallen — die Werkzeuge nutzen
+   den Platz, der oben links nach dem Umzug von Symbol, Timeframe und
+   Kennzahlen frei wurde. Das spart 40px Hoehe fuer den Chart. */
+.chart-tools {
   display: flex; align-items: center; gap: 4px;
-  background: var(--bg2); border-bottom: 1px solid var(--border);
-  height: 40px; flex-shrink: 0; padding: 0 12px;
-  /* KEIN overflow: die Sub-Chart-Auswahl klappt hier absolut positioniert
-     nach unten auf und wuerde sonst abgeschnitten. Gescrollt wird der
-     Werkzeug-Container darin. */
-  overflow: visible;
+  min-width: 0; flex: 1;
+  margin-left: 14px;
+  /* KEIN overflow-Clipping: die Sub-Chart-Auswahl klappt absolut
+     positioniert nach unten auf. Bei Platzmangel scrollt die Leiste. */
+  overflow-x: auto; overflow-y: visible;
+  scrollbar-width: none;
 }
-.chart-tools { display: flex; align-items: center; gap: 4px;
-  overflow-x: auto; scrollbar-width: none; min-width: 0; flex: 1; }
 .chart-tools::-webkit-scrollbar { display: none; }
-/* Die Auswahl bleibt beim Scrollen der Werkzeuge sichtbar. */
 .chart-tools .sub-select { flex-shrink: 0; }
+.chart-tools .chart-type-btn { flex-shrink: 0; }
 .tf-btn {
   background: transparent; border: none; color: var(--muted);
   padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;
@@ -155,7 +156,6 @@ body {
 }
 .tf-btn:hover { background: var(--panel); color: var(--txt); }
 .tf-btn.active { background: var(--blue); color: #fff; }
-.chart-tools { display: contents; }
 .chart-type-btn { background: var(--panel); border: 1px solid var(--border); color: var(--muted);
   padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; }
 .chart-type-btn.active { color: var(--blue-lt); border-color: var(--blue); }
@@ -538,7 +538,6 @@ body {
 .chart-fs-btn:hover { background: rgba(255,255,255,.10); border-color: rgba(255,255,255,.34); color: #fff; }
 body.chart-fullscreen { overflow: hidden; }
 body.chart-fullscreen .topbar,
-body.chart-fullscreen .tf-bar,
 body.chart-fullscreen .bottom-bar,
 body.chart-fullscreen .watchlist,
 body.chart-fullscreen .sidebar,
@@ -829,7 +828,7 @@ button, .wl-item, .side-tab, .subchart-tab, .symbol-box { touch-action: manipula
 .topbar { min-width: 0; }
 .exchange-switch, .symbol-box, .topbar-right { flex-shrink: 0; }
 .ticker-stats { scrollbar-width: none; }
-.ticker-stats::-webkit-scrollbar, .tf-bar::-webkit-scrollbar, .side-tabs::-webkit-scrollbar { display: none; }
+.ticker-stats::-webkit-scrollbar, .side-tabs::-webkit-scrollbar { display: none; }
 .sidebar { width: clamp(340px, 25vw, 420px); }
 .watchlist { width: clamp(220px, 17vw, 280px); }
 .side-tabs { overflow-x: auto; scrollbar-width: none; }
@@ -884,7 +883,9 @@ button, .wl-item, .side-tab, .subchart-tab, .symbol-box { touch-action: manipula
      Timeframes und Werkzeuge liegen in Bottom-Sheets. */
   /* .ticker-stats NICHT global ausblenden — die Kennzahlen sollen ja gerade
      unten sichtbar sein. Nur der Rest der alten Kopfzeile entfaellt. */
-  .tf-bar { display: none; }
+  /* Die Werkzeuge wandern mobil per MobileBars ins Sheet — der leere
+     Container in der Topbar darf dann keinen Platz belegen. */
+  .chart-tools:empty { display: none; }
   /* Die Bottom-Bar bleibt AUCH MOBIL sichtbar — sie ist ja genau der Ort,
      an den Kurs und Kennzahlen wandern sollten. Sie sitzt oberhalb der
      Mobile-Nav und scrollt horizontal, weil dort nicht alles nebeneinander
@@ -1100,12 +1101,39 @@ body.pwa-standalone #fullscreenBtn { display: inline-flex; }
     <button class="ex-btn active" data-ex="binance">Binance</button>
     <button class="ex-btn" data-ex="bybit">Bybit</button>
   </div>
-  <!-- Symbol-Box und Timeframe sind in die Bottom-Bar gewandert (#bottomBar),
-       ebenso die Kennzahlen. Oben bleiben nur noch die Aktionsknoepfe. -->
+  <!-- Symbol-Box, Timeframe und Kennzahlen sind in die Bottom-Bar gewandert.
+       Der dadurch frei gewordene Platz links traegt jetzt die
+       Chart-Werkzeuge — die eigene Zeile darunter entfaellt und der
+       Chart gewinnt 40px Hoehe. -->
+  <div class="chart-tools" id="chartTools">
+    <button class="chart-type-btn active" id="typeCandle" title="Kerzen">📊 Kerzen</button>
+    <button class="chart-type-btn" id="indBrowserBtn" title="Indikatoren hinzufügen">ƒ Indikatoren</button>
+    <button class="chart-type-btn empty" id="indManageBtn" title="Aktive Indikatoren verwalten">☰ Aktiv<span class="ind-count">0</span></button>
+    <button class="chart-type-btn" id="vpToggle" title="Volume Profile">📊 VP</button>
+    <button class="chart-type-btn" id="vahValToggle" title="POC / Value Area Linien">🎯 POC/VA</button>
+    <button class="chart-type-btn" id="lhToggle" title="Liquidation Heatmap als Chart-Overlay">🔥 Liq-Heat</button>
+    <!-- Sub-Chart-Auswahl (Open Interest, Funding, CVD …). Klappt nach
+         UNTEN auf, weil die Leiste oben sitzt. -->
+    <div class="sub-select" id="subSelect">
+      <button class="sub-select-btn" id="subSelectBtn" type="button"
+              aria-haspopup="listbox" aria-expanded="false">
+        <span id="subSelectLabel">✕ Aus</span>
+        <span class="sub-caret">▾</span>
+      </button>
+      <div class="sub-menu" id="subMenu" role="listbox">
+        <div class="sub-opt" data-sub="oi" role="option">📦 Open Interest</div>
+        <div class="sub-opt" data-sub="funding" role="option">💸 Funding Rate</div>
+        <div class="sub-opt" data-sub="ls" role="option">⚖️ Long/Short</div>
+        <div class="sub-opt" data-sub="cvd" role="option">🔵 CVD</div>
+        <div class="sub-opt active" data-sub="none" role="option">✕ Aus</div>
+      </div>
+    </div>
+    <button class="chart-type-btn fs-inline-btn" id="chartFullscreenTop" title="Chart Fullscreen">⛶ Fullscreen</button>
+  </div>
   <div class="topbar-right">
     <!-- Mobile: kompakte Trigger für die zusammengelegten Leisten.
          Per CSS nur unterhalb des Mobile-Breakpoints sichtbar. -->
-    <button class="m-trigger" id="mToolsBtn" title="Chart-Werkzeuge">⚙<span class="m-trigger-caret">▾</span></button>
+    <button class="m-trigger" id="mToolsBtn" title="Chart-Werkzeuge">🛠<span class="m-trigger-caret">▾</span></button>
     <div class="conn-dot" id="connDot" title="Verbindung"></div>
     <button class="dash-btn" id="signalRefreshTop" title="Signal Engine ausführen">⚡ Signale</button>
     <button class="icon-btn" id="settingsBtn" title="Einstellungen & Demo-Konto">⚙</button>
@@ -1126,38 +1154,8 @@ body.pwa-standalone #fullscreenBtn { display: inline-flex; }
   <button id="pwaDismissBtn" class="pwa-dismiss" type="button" aria-label="Schließen">✕</button>
 </div>
 
-<!-- CHART-WERKZEUGLEISTE
-     Die Timeframes sind in die Bottom-Bar gewandert; hier bleiben nur
-     noch die Chart-Werkzeuge. Die Klasse .tf-bar bleibt erhalten, weil
-     Layout und MobileBars daran haengen. -->
-<div class="tf-bar" id="tfBar">
-  <div class="chart-tools" id="chartTools">
-  <button class="chart-type-btn active" id="typeCandle" title="Kerzen">📊 Kerzen</button>
-  <button class="chart-type-btn" id="indBrowserBtn" title="Indikatoren hinzufügen">ƒ Indikatoren</button>
-  <button class="chart-type-btn empty" id="indManageBtn" title="Aktive Indikatoren verwalten">☰ Aktiv<span class="ind-count">0</span></button>
-  <button class="chart-type-btn" id="vpToggle" title="Volume Profile">📊 VP</button>
-  <button class="chart-type-btn" id="vahValToggle" title="POC / Value Area Linien">🎯 POC/VA</button>
-  <button class="chart-type-btn" id="lhToggle" title="Liquidation Heatmap als Chart-Overlay">🔥 Liq-Heat</button>
-  <!-- Sub-Chart-Auswahl (Open Interest, Funding, CVD …). Sitzt jetzt hier
-       oben bei den Werkzeugen; die eigene Leiste unten ist entfallen.
-       Klappt nach UNTEN auf, weil die Werkzeugleiste oben sitzt. -->
-  <div class="sub-select" id="subSelect">
-    <button class="sub-select-btn" id="subSelectBtn" type="button"
-            aria-haspopup="listbox" aria-expanded="false">
-      <span id="subSelectLabel">✕ Aus</span>
-      <span class="sub-caret">▾</span>
-    </button>
-    <div class="sub-menu" id="subMenu" role="listbox">
-      <div class="sub-opt" data-sub="oi" role="option">📦 Open Interest</div>
-      <div class="sub-opt" data-sub="funding" role="option">💸 Funding Rate</div>
-      <div class="sub-opt" data-sub="ls" role="option">⚖️ Long/Short</div>
-      <div class="sub-opt" data-sub="cvd" role="option">🔵 CVD</div>
-      <div class="sub-opt active" data-sub="none" role="option">✕ Aus</div>
-    </div>
-  </div>
-  <button class="chart-type-btn fs-inline-btn" id="chartFullscreenTop" title="Chart Fullscreen">⛶ Fullscreen</button>
-  </div>
-</div>
+<!-- Die Chart-Werkzeugleiste ist in die Topbar gewandert (linke Seite,
+     dort war nach dem Umbau Platz frei). Die eigene Zeile entfaellt. -->
 
 <!-- MAIN -->
 <div class="main">
@@ -2524,9 +2522,10 @@ const MobileBars = (() => {
     document.querySelectorAll('#mTfHost .tf-btn').forEach(b => bbTfs.appendChild(b));
     Array.from($('mToolsHost').children).forEach(b => tools.appendChild(b));
     const ex = $('exchangeSwitch');
-    // Exchange-Switch zurueck an den Anfang der Topbar (die Symbol-Box
-    // sitzt jetzt in der Bottom-Bar und taugt nicht mehr als Anker).
-    if (ex) topbar.insertBefore(ex, topbar.querySelector('.topbar-right'));
+    // Exchange-Switch zurueck an seinen Platz: direkt VOR die Werkzeuge,
+    // also gleich hinter die Marke. Vor .topbar-right waere er hinter den
+    // Werkzeugen gelandet.
+    if (ex) topbar.insertBefore(ex, tools);
     // Die Kennzahlen wurden nie verschoben — sie stehen durchgehend unten.
 
     movedToSheets = false;
@@ -2629,6 +2628,10 @@ function closeSubMenu() {
   const b = document.getElementById('subSelectBtn');
   if (s) s.classList.remove('open');
   if (b) b.setAttribute('aria-expanded', 'false');
+  // Inline-Positionierung wieder abraeumen, damit das Menue im
+  // Mobile-Sheet erneut der CSS-Regel folgt.
+  const menu = document.getElementById('subMenu');
+  if (menu) menu.removeAttribute('style');
 }
 
 function reloadAll() {
@@ -2712,7 +2715,41 @@ document.getElementById('subSelectBtn').onclick = function(e) {
   const open = !s.classList.contains('open');
   s.classList.toggle('open', open);
   this.setAttribute('aria-expanded', String(open));
+  if (open) positionSubMenu();
 };
+
+/**
+ * Verankert das Menue per position:fixed an der Schaltflaeche.
+ *
+ * Noetig, weil .chart-tools horizontal scrollt: overflow-x:auto erzwingt
+ * laut CSS-Spec auch overflow-y:auto, wodurch ein absolut positioniertes
+ * Menue am unteren Rand der Leiste abgeschnitten wuerde. Fixed haengt es
+ * aus dem Scroll-Container aus.
+ */
+function positionSubMenu() {
+  const btn = document.getElementById('subSelectBtn');
+  const menu = document.getElementById('subMenu');
+  if (!btn || !menu) return;
+  // Im Mobile-Sheet liegt die Auswahl in einem normalen Fluss-Container —
+  // dort bleibt die CSS-Positionierung richtig.
+  if (btn.closest('.m-sheet')) { menu.removeAttribute('style'); return; }
+  const r = btn.getBoundingClientRect();
+  menu.style.position = 'fixed';
+  menu.style.top = (r.bottom + 5) + 'px';
+  menu.style.bottom = 'auto';
+  menu.style.minWidth = r.width + 'px';
+  // Nach links ausrichten, falls das Menue sonst rechts herauslaeuft.
+  const w = Math.max(menu.offsetWidth, r.width);
+  menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px';
+  menu.style.right = 'auto';
+}
+// Beim Scrollen der Werkzeugleiste bzw. Groessenaenderung nachfuehren.
+window.addEventListener('resize', () => {
+  if (document.getElementById('subSelect')?.classList.contains('open')) positionSubMenu();
+});
+document.getElementById('chartTools')?.addEventListener('scroll', () => {
+  if (document.getElementById('subSelect')?.classList.contains('open')) positionSubMenu();
+});
 // Klick daneben oder Escape schliesst das Menue.
 document.addEventListener('click', e => {
   const s = document.getElementById('subSelect');

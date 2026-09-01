@@ -63,7 +63,9 @@ console.log('── Container fuer verschobene Elemente ──');
 // in einem display:none-Elternteil, sind sie auf dem Desktop unsichtbar.
 const tools = d.getElementById('chartTools');
 chk('#chartTools existiert', !!tools);
-chk('#chartTools liegt in .tf-bar', !!tools.closest('.tf-bar'));
+// Die eigene Werkzeugzeile ist entfallen — die Werkzeuge sitzen in der Topbar.
+chk('#chartTools liegt in der Topbar', !!tools.closest('.topbar'));
+chk('.tf-bar existiert nicht mehr', d.querySelector('.tf-bar') === null);
 
 // Die Sheet-Hosts duerfen den Chart nicht ueberlagern, solange sie zu sind.
 ['mToolsModal', 'mTfModal', 'mStatsModal'].forEach(id => {

@@ -78,8 +78,8 @@ const mainEl = d.querySelector('.main');
 chk('Bottom-Bar steht im DOM NACH .main',
   !!(mainEl.compareDocumentPosition(bb) & 4),
   'sonst landet sie nicht unten');
-chk('Bottom-Bar steht NACH der Chart-Werkzeugleiste',
-  !!(d.getElementById('tfBar').compareDocumentPosition(bb) & 4));
+chk('Bottom-Bar steht NACH der Topbar',
+  !!(d.querySelector('.topbar').compareDocumentPosition(bb) & 4));
 
 console.log('── Bottom-Bar: Layout-CSS ──');
 chk('.bottom-bar ist flex', cs(bb).display === 'flex');
@@ -96,17 +96,23 @@ chk('.ticker-stats hat kein Topbar-Padding mehr',
   cs(d.getElementById('tickerStats')).paddingLeft === '0px',
   cs(d.getElementById('tickerStats')).paddingLeft);
 
-console.log('── Chart-Werkzeugleiste: nur noch Werkzeuge ──');
-const tfBar = d.getElementById('tfBar');
-chk('.tf-bar enthaelt keine Timeframes mehr',
-  tfBar.querySelectorAll('.tf-btn').length === 0);
-chk('.tf-bar enthaelt kein Divider-Relikt',
-  tfBar.querySelectorAll('.tf-divider').length === 0);
-chk('#chartTools bleibt in der .tf-bar', !!tfBar.querySelector('#chartTools'));
-chk('Werkzeuge weiterhin vorhanden',
-  tfBar.querySelectorAll('.chart-type-btn').length === 7,
-  String(tfBar.querySelectorAll('.chart-type-btn').length));
-chk('Liq-Heat-Button weiterhin da', !!tfBar.querySelector('#lhToggle'));
+console.log('── Chart-Werkzeuge sitzen in der Topbar ──');
+chk('eigene Werkzeugzeile .tf-bar ist entfallen',
+  d.querySelector('.tf-bar') === null);
+chk('#chartTools liegt in der Topbar',
+  !!d.querySelector('.topbar').querySelector('#chartTools'));
+const toolsEl = d.getElementById('chartTools');
+chk('Werkzeuge enthalten keine Timeframes',
+  toolsEl.querySelectorAll('.tf-btn').length === 0);
+chk('Werkzeuge weiterhin vollzaehlig',
+  toolsEl.querySelectorAll('.chart-type-btn').length === 7,
+  String(toolsEl.querySelectorAll('.chart-type-btn').length));
+chk('Liq-Heat-Button weiterhin da', !!toolsEl.querySelector('#lhToggle'));
+// Nutzt den links frei gewordenen Platz statt einer eigenen Zeile.
+chk('Werkzeuge stehen links, vor den Aktionsknoepfen',
+  !!(toolsEl.compareDocumentPosition(d.querySelector('.topbar-right')) & 4));
+chk('Werkzeuge stehen nach dem Exchange-Umschalter',
+  !!(d.getElementById('exchangeSwitch').compareDocumentPosition(toolsEl) & 4));
 
 console.log('── Sub-Chart-Auswahl als Dropdown ──');
 chk('keine alten .subchart-tab-Elemente mehr',
@@ -151,12 +157,19 @@ chk('Menue liegt ueber dem Chart', parseInt(cs(menu).zIndex, 10) >= 20,
 // Regression: overflow auf der umgebenden Leiste schnitt das aufklappende
 // Menue ab, dadurch liess es sich nicht oeffnen. Jetzt scrollt nur der
 // innere Werkzeug-Container.
-const tfBarRule = (html.match(/\.tf-bar\s*\{([^}]*)\}/) || [, ''])[1];
-chk('Werkzeugleiste clippt das Menue nicht',
-  !/overflow-x:\s*auto/.test(tfBarRule) && !/overflow:\s*hidden/.test(tfBarRule),
-  tfBarRule.trim());
-chk('stattdessen scrollt der Werkzeug-Container',
-  /\.chart-tools\s*\{[^}]*overflow-x:\s*auto/.test(html));
+// .chart-tools scrollt horizontal; overflow-x:auto erzwingt laut Spec
+// auch overflow-y:auto. Darum wird das Menue beim Oeffnen per JS auf
+// position:fixed gesetzt, statt sich auf overflow:visible zu verlassen.
+chk('Werkzeug-Container scrollt horizontal',
+  /\.chart-tools\s*\{[\s\S]*?overflow-x:\s*auto/.test(html));
+chk('Menue wird per fixed aus dem Scroll-Container geloest',
+  /function positionSubMenu\(\)/.test(html) &&
+  /menu\.style\.position = 'fixed'/.test(html));
+chk('Position wird beim Oeffnen gesetzt', /if \(open\) positionSubMenu\(\)/.test(html));
+chk('und beim Scrollen der Leiste nachgefuehrt',
+  /getElementById\('chartTools'\)\?\.addEventListener\('scroll'/.test(html));
+chk('Inline-Styles werden beim Schliessen abgeraeumt',
+  /menu\.removeAttribute\('style'\)/.test(html));
 chk('alte Sub-Leiste ist ganz entfallen', d.getElementById('subTabs') === null);
 chk('keine .subchart-tabs-Regeln mehr', !/\.subchart-tabs\s*\{/.test(html));
 sel.classList.add('open');
