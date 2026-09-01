@@ -92,7 +92,9 @@ chk('Tools-Sheet oeffnet', d.getElementById('mToolsModal').classList.contains('o
 chk('TF-Sheet schliesst dabei (nie zwei offen)', !d.getElementById('mTfModal').classList.contains('open'));
 d.getElementById('mToolsClose').click();
 chk('Tools-Sheet schliesst per X', !d.getElementById('mToolsModal').classList.contains('open'));
-d.getElementById('mStatsBtn').click();
+// Das Stats-Sheet hat keinen eigenen Trigger mehr (Kurs steht unten);
+// es wird direkt geoeffnet, um das Backdrop-Verhalten zu pruefen.
+d.getElementById('mStatsModal').classList.add('open');
 d.getElementById('mStatsBackdrop').click();
 chk('Stats-Sheet schliesst per Backdrop', !d.getElementById('mStatsModal').classList.contains('open'));
 
@@ -108,11 +110,11 @@ chk('Werkzeug-Auswahl schliesst das Sheet', !d.getElementById('mToolsModal').cla
 w.State.tf = '15m';
 w.MobileBars.updateTriggers();
 chk('TF-Trigger zeigt aktuellen Timeframe', d.getElementById('mTfBtnLabel').textContent === '15m');
-w.MobileBars.updateTriggers({ price: 42000, change: -1.5 });
-chk('Preis-Trigger aktualisiert', d.getElementById('mStatsBtnPrice').textContent === '42000');
-chk('Aenderung rot bei Minus', d.getElementById('mStatsBtnChg').className.includes('red'));
-w.MobileBars.updateTriggers({ price: 43000, change: 2.1 });
-chk('Aenderung gruen bei Plus', d.getElementById('mStatsBtnChg').className.includes('green'));
+// Preis/Aenderung werden nicht mehr als Trigger gespiegelt — sie stehen
+// dauerhaft in der Bottom-Bar und werden dort direkt aktualisiert.
+chk('kein Preis-Trigger mehr im Markup', d.getElementById('mStatsBtn') === null);
+chk('Kurs steht stattdessen in der Bottom-Bar',
+  d.getElementById('bottomBar').contains(d.getElementById('tPrice')));
 
 // ── CSS-Vertrag der Sheets ────────────────────────────────────────────────
 // Regressionsschutz: die Sheets wurden anfangs mit den .ind-modal-Klassen des
@@ -160,10 +162,12 @@ chk('Desktop: Exchange zurueck in Topbar', !!d.querySelector('.topbar > #exchang
 chk('Desktop: Sheets leer', tfHost.children.length === 0 && statsHost.children.length === 0 && toolsHost.children.length === 0);
 chk('Desktop: TF-Reihenfolge korrekt',
   [...d.querySelectorAll('#bbTfs .tf-btn')].map(b => b.dataset.tf).join(',') === '1m,3m,5m,15m,1h,4h,1d');
-chk('Desktop: Bottom-Bar enthaelt nur TFs und Kennzahlen',
-  [...d.getElementById('bottomBar').children].map(e => e.id).join(',') === 'bbTfs,tickerStats');
-chk('Desktop: Exchange steht vor der Symbol-Box',
-  d.querySelector('#exchangeSwitch').compareDocumentPosition(d.querySelector('#symbolBox')) & 4);
+chk('Desktop: Bottom-Bar mit Symbol, TF-Trigger, TFs und Kennzahlen',
+  [...d.getElementById('bottomBar').children].map(e => e.id).join(',')
+    === 'symbolBox,mTfBtn,bbTfs,tickerStats',
+  [...d.getElementById('bottomBar').children].map(e => e.id).join(','));
+chk('Desktop: Symbol-Box sitzt unten, nicht in der Topbar',
+  !d.querySelector('.topbar #symbolBox'));
 
 clicks.length = 0;
 d.querySelector('#bbTfs [data-tf="1d"]').click();

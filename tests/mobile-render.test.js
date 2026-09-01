@@ -96,7 +96,7 @@ chk('.ticker-stats liegt NICHT mehr in der Topbar',
 chk('.tf-bar ausgeblendet', cs(d.querySelector('.tf-bar')).display === 'none');
 chk('.topbar sichtbar', cs(d.querySelector('.topbar')).display !== 'none');
 // Der Preis-Trigger entfaellt bewusst — der Kurs steht dauerhaft unten.
-chk('Preis-Trigger ausgeblendet', cs(d.getElementById('mStatsBtn')).display === 'none');
+chk('Preis-Trigger existiert nicht mehr', d.getElementById('mStatsBtn') === null);
 chk('uebrige Trigger sichtbar',
   ['mTfBtn', 'mToolsBtn'].every(id => cs(d.getElementById(id)).display !== 'none'));
 
@@ -113,7 +113,8 @@ console.log('── Sheets geschlossen: duerfen Chart nicht ueberlagern ──')
 
 console.log('── Sub-Chart / Panes ──');
 const subw = d.querySelector('.subchart-wrap');
-if (subw) chk('.subchart-wrap sichtbar', cs(subw).display !== 'none', cs(subw).display);
+// Der Sub-Chart ist standardmaessig AUS und damit bewusst eingeklappt.
+if (subw) chk('.subchart-wrap startet eingeklappt', !subw.classList.contains('show'));
 const panes = d.getElementById('indPanes');
 if (panes) chk('#indPanes sichtbar', cs(panes).display !== 'none', cs(panes).display);
 

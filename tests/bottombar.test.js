@@ -32,7 +32,10 @@ chk('keine Timeframe-Buttons in der Topbar',
   topbar.querySelectorAll('.tf-btn').length === 0);
 chk('#tickerStats liegt NICHT in der Topbar',
   !topbar.contains(d.getElementById('tickerStats')));
-chk('Symbol-Box bleibt in der Topbar', !!topbar.querySelector('#symbolBox'));
+// Die Symbol-Box ist ebenfalls nach unten gewandert.
+chk('Symbol-Box NICHT mehr in der Topbar', !topbar.querySelector('#symbolBox'));
+chk('Symbol-Box sitzt in der Bottom-Bar',
+  !!d.getElementById('bottomBar').querySelector('#symbolBox'));
 chk('Exchange-Switch bleibt in der Topbar', !!topbar.querySelector('#exchangeSwitch'));
 chk('Aktionsknoepfe bleiben oben',
   !!topbar.querySelector('#aiTrigger') && !!topbar.querySelector('#settingsBtn'));
@@ -55,8 +58,8 @@ chk('7 Kennzahlen in der Bottom-Bar',
 chk('Preis-Element vorhanden', !!bb.querySelector('#tPrice'));
 chk('Open Interest vorhanden', !!bb.querySelector('#tOi'));
 chk('Funding vorhanden', !!bb.querySelector('#tFunding'));
-chk('Reihenfolge: erst TFs, dann Kennzahlen',
-  [...bb.children].map(e => e.id).join(',') === 'bbTfs,tickerStats',
+chk('Reihenfolge: Symbol, TF-Trigger, TFs, Kennzahlen',
+  [...bb.children].map(e => e.id).join(',') === 'symbolBox,mTfBtn,bbTfs,tickerStats',
   [...bb.children].map(e => e.id).join(','));
 
 // Direktes Kind von <body> und letzte sichtbare Leiste vor den Overlays:
@@ -112,10 +115,15 @@ chk('5 Auswahloptionen', d.querySelectorAll('.sub-opt').length === 5,
 chk('alle Optionen erhalten',
   [...d.querySelectorAll('.sub-opt')].map(o => o.dataset.sub).join(',')
     === 'oi,funding,ls,cvd,none');
-chk('Open Interest ist vorausgewaehlt',
-  d.querySelector('.sub-opt.active').dataset.sub === 'oi');
-chk('Beschriftung zeigt die Vorauswahl',
-  d.getElementById('subSelectLabel').textContent.includes('Open Interest'));
+// Standardmaessig ist der Sub-Chart AUS — mehr Platz fuer den Hauptchart.
+chk('"Aus" ist vorausgewaehlt',
+  d.querySelector('.sub-opt.active').dataset.sub === 'none',
+  d.querySelector('.sub-opt.active').dataset.sub);
+chk('Beschriftung zeigt "Aus"',
+  d.getElementById('subSelectLabel').textContent.includes('Aus'));
+chk('State startet mit subType none', /subType:\s*'none'/.test(html));
+chk('Sub-Chart startet eingeklappt',
+  !d.getElementById('subWrap').classList.contains('show'));
 chk('Button ist als Listbox-Trigger ausgezeichnet',
   btn.getAttribute('aria-haspopup') === 'listbox' &&
   btn.getAttribute('aria-expanded') === 'false');

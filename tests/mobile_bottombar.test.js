@@ -64,6 +64,17 @@ const w = dom.window, d = w.document;
 const cs = el => w.getComputedStyle(el);
 
 setTimeout(() => {
+  // ZUERST der unberuehrte Startzustand — spaetere Klicks veraendern ihn.
+  const State0 = w.eval('typeof State !== "undefined" ? State : null');
+  console.log('── Sub-Chart standardmaessig aus (Startzustand) ──');
+  chk('State.subType startet auf none', State0.subType === 'none', String(State0.subType));
+  chk('Beschriftung zeigt "Aus"',
+    d.getElementById('subSelectLabel').textContent.includes('Aus'));
+  chk('"Aus" ist die aktive Option',
+    d.querySelector('.sub-opt.active').dataset.sub === 'none');
+  chk('Sub-Chart-Bereich ist eingeklappt',
+    !d.getElementById('subWrap').classList.contains('show'));
+
   console.log('── Beschwerde 1: "unten geht dropdown nicht auf" ──');
   const sel = d.getElementById('subSelect');
   const btn = d.getElementById('subSelectBtn');
@@ -89,7 +100,7 @@ setTimeout(() => {
   chk('Auswahl wirkt (State.subType)', State.subType === 'funding', String(State.subType));
   chk('Menue schliesst nach Auswahl', cs(menu).display === 'none');
   chk('Beschriftung folgt', d.getElementById('subSelectLabel').textContent.includes('Funding'));
-  d.querySelector('.sub-opt[data-sub="oi"]').click();
+  d.querySelector('.sub-opt[data-sub="none"]').click();  // zurueck auf den Standard
 
   console.log('── Beschwerde 2: "die aus der oberen leiste sind noch nicht in der unteren" ──');
   const bb = d.getElementById('bottomBar');
@@ -143,12 +154,35 @@ setTimeout(() => {
   chk('Topbar enthaelt KEINE Kennzahlen mehr',
     d.querySelectorAll('.topbar .stat').length === 0);
   chk('Preis-Trigger oben ist weg',
-    cs(d.getElementById('mStatsBtn')).display === 'none');
+    d.getElementById('mStatsBtn') === null);
   chk('Kennzahlen NICHT ins Sheet abgewandert',
     d.querySelectorAll('#mStatsHost .stat').length === 0,
     String(d.querySelectorAll('#mStatsHost .stat').length));
   chk('Exchange-Umschalter bleibt im Sheet',
     !!d.querySelector('#mStatsHost #exchangeSwitch'));
+
+  console.log('── Symbol-Box & Timeframe unten ──');
+  const sb = d.getElementById('symbolBox');
+  chk('Symbol-Box liegt in der Bottom-Bar', bb.contains(sb));
+  chk('Symbol-Box NICHT mehr in der Topbar', !d.querySelector('.topbar #symbolBox'));
+  chk('TF-Trigger liegt in der Bottom-Bar', bb.contains(d.getElementById('mTfBtn')));
+  chk('Preis-Trigger ganz entfernt', d.getElementById('mStatsBtn') === null);
+
+  // Regression-Falle: die Bar darf das nach oben aufklappende Symbol-Menue
+  // nicht per overflow abschneiden (gleicher Bug wie zuvor beim Sub-Dropdown).
+  chk('Bar clippt das Symbol-Menue nicht (mobil)',
+    !/overflow-x:\s*auto/.test(bbRule) && !/overflow:\s*hidden/.test(bbRule),
+    bbRule.trim());
+  const ddRule = (html.match(/\.dropdown\s*\{([^}]*)\}/) || [, ''])[1];
+  chk('Symbol-Dropdown klappt nach OBEN auf', /bottom:\s*calc\(100%/.test(ddRule), ddRule.trim());
+  chk('Symbol-Dropdown nicht mehr top-verankert', !/top:\s*52px/.test(ddRule));
+
+  const dd = d.getElementById('symbolDropdown');
+  chk('Symbol-Menue startet geschlossen', !dd.classList.contains('show'));
+  sb.click();
+  chk('Klick oeffnet das Symbol-Menue', dd.classList.contains('show'));
+  chk('Symbol-Menue ist sichtbar', cs(dd).display === 'block', cs(dd).display);
+  chk('Suchfeld erreichbar', !!d.getElementById('symbolSearch'));
 
   console.log('── Kein Ueberlappen mit der Mobile-Nav ──');
   chk('Chart reserviert Platz fuer Nav + Bottom-Bar',

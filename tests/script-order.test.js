@@ -47,7 +47,9 @@ entryCalls.forEach(call => {
 
 // Kernpruefung: die Sheet-Elemente muessen VOR jedem Top-Level-Aufruf stehen,
 // der sie anfasst.
-const sheetIds = ['mToolsBtn', 'mTfBtn', 'mStatsBtn', 'mToolsModal', 'mTfModal',
+// mStatsBtn entfaellt: Kurs/Kennzahlen stehen dauerhaft in der Bottom-Bar.
+// mStatsBtn entfaellt: Kurs/Kennzahlen stehen dauerhaft in der Bottom-Bar.
+const sheetIds = ['mToolsBtn', 'mTfBtn', 'mToolsModal', 'mTfModal',
                   'mStatsModal', 'mToolsHost', 'mTfHost', 'mStatsHost',
                   'mToolsBackdrop', 'mTfBackdrop', 'mStatsBackdrop'];
 

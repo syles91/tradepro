@@ -234,7 +234,10 @@ body {
   height: 46px; padding: 0 14px;
   background: var(--bg2); border-top-width: 1px; border-top-style: solid;
   border-top-color: var(--border);
-} 
+}
+/* Die Symbol-Box sitzt jetzt hier unten und braucht einen Positions-Anker
+   fuer ihr nach oben aufklappendes Dropdown. */
+.bottom-bar .symbol-box { position: relative; flex-shrink: 0; }
 .bb-tfs { display: flex; align-items: center; gap: 3px; flex-shrink: 0;
   padding-right: 12px; border-right: 1px solid var(--border); }
 
@@ -405,10 +408,12 @@ body {
 
 /* ════════ SYMBOL DROPDOWN ════════ */
 .dropdown {
-  position: absolute; top: 52px; left: 0;
+  /* Klappt nach OBEN auf — die Symbol-Box sitzt jetzt in der Bottom-Bar
+     am unteren Fensterrand, nach unten waere kein Platz. */
+  position: absolute; bottom: calc(100% + 8px); left: 0;
   background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
   width: 280px; max-height: 400px; overflow-y: auto; z-index: 200;
-  box-shadow: 0 8px 32px rgba(0,0,0,.5); display: none;
+  box-shadow: 0 -8px 32px rgba(0,0,0,.5); display: none;
 }
 .dropdown.show { display: block; }
 .dd-search { padding: 10px; border-bottom: 1px solid var(--border); }
@@ -879,13 +884,21 @@ button, .wl-item, .side-tab, .subchart-tab, .symbol-box { touch-action: manipula
      Mobile-Nav und scrollt horizontal, weil dort nicht alles nebeneinander
      passt. Die Timeframes liegen mobil weiterhin im Sheet (MobileBars
      raeumt #bbTfs leer), darum faellt der Trenner links weg. */
+  /* WICHTIG: kein overflow auf der Bar selbst — sonst schneidet sie das
+     nach oben aufklappende Symbol-Dropdown ab (gleiche Falle wie zuvor
+     bei .subchart-tabs). Gescrollt wird stattdessen der Kennzahlen-Block. */
   .bottom-bar {
-    display: flex; height: 40px; gap: 10px; padding: 0 10px;
+    display: flex; height: 40px; gap: 8px; padding: 0 10px;
     position: fixed; left: 0; right: 0;
     bottom: calc(var(--bottom-nav-h) + var(--safe-bottom));
-    z-index: 250; overflow-x: auto; scrollbar-width: none;
+    z-index: 250; overflow: visible;
   }
-  .bottom-bar::-webkit-scrollbar { display: none; }
+  .bottom-bar .ticker-stats { overflow-x: auto; scrollbar-width: none; min-width: 0; }
+  .bottom-bar .ticker-stats::-webkit-scrollbar { display: none; }
+  /* Symbol-Box und TF-Trigger duerfen nicht mitschrumpfen. */
+  .bottom-bar .symbol-box { flex-shrink: 0; padding: 5px 9px; }
+  .bottom-bar .symbol-name { font-size: 12px; }
+  .bottom-bar #mTfBtn { flex-shrink: 0; min-width: 44px; min-height: 30px; }
   .bb-tfs:empty { display: none; }
   .bottom-bar .ticker-stats { gap: 14px; }
   .bottom-bar .stat-label { font-size: 9px; }
@@ -908,11 +921,9 @@ button, .wl-item, .side-tab, .subchart-tab, .symbol-box { touch-action: manipula
   .m-trigger-sub.green { color: var(--green-br); }
   .m-trigger-sub.red { color: var(--red-br); }
   .m-trigger-caret { font-size: 8px; color: var(--muted); }
-  #mStatsBtn { font-variant-numeric: tabular-nums; }
-  /* Der Preis-Trigger oben ist ueberfluessig, seit Kurs und Kennzahlen
-     dauerhaft in der Bottom-Bar stehen. Das entlastet die Topbar zusaetzlich.
-     Das Stats-Sheet bleibt im DOM, weil dort der Exchange-Umschalter sitzt. */
-  #mStatsBtn { display: none; }
+  /* Der Preis-Trigger (#mStatsBtn) wurde ganz entfernt: Kurs und Kennzahlen
+     stehen dauerhaft in der Bottom-Bar. Das Stats-Sheet bleibt im DOM, weil
+     dort der Exchange-Umschalter sitzt. */
   #mTfBtn, #mToolsBtn { min-width: 40px; }
 
   /* Guide ist auf dem Handy sekundaer — Platz fuer die Trigger. */
@@ -992,10 +1003,7 @@ button, .wl-item, .side-tab, .subchart-tab, .symbol-box { touch-action: manipula
   .symbol-box { padding: 0 8px; }
   .dash-btn { font-size: 0; width: 38px; }
   .dash-btn::before { content: '⚡'; font-size: 15px; }
-  /* Auf sehr schmalen Screens Kurs-Trigger auf den reinen Preis kuerzen,
-     damit Symbol + alle Trigger nebeneinander passen. */
-  #mStatsBtn { padding: 3px 6px; font-size: 11px; }
-  #mStatsBtn .m-trigger-sub { display: none; }
+  /* Auf sehr schmalen Screens die Trigger kompakter setzen. */
   .m-trigger { padding: 3px 6px; }
   .subchart-wrap { height: 116px; }
   .watchlist.mobile-show, .sidebar.mobile-show { width: 100vw; }
@@ -1073,22 +1081,11 @@ body.pwa-standalone #fullscreenBtn { display: inline-flex; }
     <button class="ex-btn active" data-ex="binance">Binance</button>
     <button class="ex-btn" data-ex="bybit">Bybit</button>
   </div>
-  <div class="symbol-box" id="symbolBox">
-    <span class="symbol-name" id="symbolName">BTCUSDT</span>
-    <span class="symbol-arrow">▼</span>
-    <!-- Dropdown -->
-    <div class="dropdown" id="symbolDropdown">
-      <div class="dd-search"><input type="text" id="symbolSearch" placeholder="Symbol suchen..."></div>
-      <div id="ddList"></div>
-    </div>
-  </div>
-  <!-- Die Kennzahlen sind in die Bottom-Bar gewandert (siehe #bottomBar),
-       damit die Topbar schlank bleibt. -->
+  <!-- Symbol-Box und Timeframe sind in die Bottom-Bar gewandert (#bottomBar),
+       ebenso die Kennzahlen. Oben bleiben nur noch die Aktionsknoepfe. -->
   <div class="topbar-right">
     <!-- Mobile: kompakte Trigger für die zusammengelegten Leisten.
          Per CSS nur unterhalb des Mobile-Breakpoints sichtbar. -->
-    <button class="m-trigger" id="mStatsBtn" title="Marktdaten"><span id="mStatsBtnPrice">–</span><span class="m-trigger-sub" id="mStatsBtnChg">–</span></button>
-    <button class="m-trigger" id="mTfBtn" title="Timeframe"><span id="mTfBtnLabel">5m</span><span class="m-trigger-caret">▾</span></button>
     <button class="m-trigger" id="mToolsBtn" title="Chart-Werkzeuge">⚙<span class="m-trigger-caret">▾</span></button>
     <div class="conn-dot" id="connDot" title="Verbindung"></div>
     <button class="dash-btn" id="signalRefreshTop" title="Signal Engine ausführen">⚡ Signale</button>
@@ -1160,19 +1157,20 @@ body.pwa-standalone #fullscreenBtn { display: inline-flex; }
       <div class="sub-select" id="subSelect">
         <button class="sub-select-btn" id="subSelectBtn" type="button"
                 aria-haspopup="listbox" aria-expanded="false">
-          <span id="subSelectLabel">📦 Open Interest</span>
+          <span id="subSelectLabel">✕ Aus</span>
           <span class="sub-caret">▾</span>
         </button>
         <div class="sub-menu" id="subMenu" role="listbox">
-          <div class="sub-opt active" data-sub="oi" role="option">📦 Open Interest</div>
+          <div class="sub-opt" data-sub="oi" role="option">📦 Open Interest</div>
           <div class="sub-opt" data-sub="funding" role="option">💸 Funding Rate</div>
           <div class="sub-opt" data-sub="ls" role="option">⚖️ Long/Short</div>
           <div class="sub-opt" data-sub="cvd" role="option">🔵 CVD</div>
-          <div class="sub-opt" data-sub="none" role="option">✕ Aus</div>
+          <div class="sub-opt active" data-sub="none" role="option">✕ Aus</div>
         </div>
       </div>
     </div>
-    <div class="subchart-wrap show" id="subWrap"><div class="subchart" id="subchart"></div></div>
+    <!-- Startet ohne "show": der Sub-Chart ist standardmaessig aus. -->
+    <div class="subchart-wrap" id="subWrap"><div class="subchart" id="subchart"></div></div>
   </div>
 
   <!-- SIDEBAR (Futures) -->
@@ -1320,6 +1318,19 @@ body.pwa-standalone #fullscreenBtn { display: inline-flex; }
      Entlastet die Topbar und haelt Kurs und Zeitebene dort, wo beim
      Traden ohnehin hingeschaut wird. -->
 <div class="bottom-bar" id="bottomBar">
+  <!-- Symbol-Auswahl ganz links: klappt nach OBEN auf, weil die Leiste
+       am unteren Fensterrand sitzt. -->
+  <div class="symbol-box" id="symbolBox">
+    <span class="symbol-name" id="symbolName">BTCUSDT</span>
+    <span class="symbol-arrow">▼</span>
+    <div class="dropdown" id="symbolDropdown">
+      <div class="dd-search"><input type="text" id="symbolSearch" placeholder="Symbol suchen..."></div>
+      <div id="ddList"></div>
+    </div>
+  </div>
+  <!-- Mobiler Timeframe-Trigger: oeffnet das TF-Sheet, sitzt jetzt ebenfalls
+       unten. Per CSS nur unterhalb des Mobile-Breakpoints sichtbar. -->
+  <button class="m-trigger" id="mTfBtn" title="Timeframe"><span id="mTfBtnLabel">5m</span><span class="m-trigger-caret">▾</span></button>
   <div class="bb-tfs" id="bbTfs">
     <button class="tf-btn" data-tf="1m">1m</button>
     <button class="tf-btn" data-tf="3m">3m</button>
@@ -1423,7 +1434,8 @@ const State = {
   exchange: 'binance',
   symbol: 'BTCUSDT',
   tf: '5m',
-  subType: 'oi',
+  // Sub-Chart standardmaessig aus — mehr Platz fuer den Hauptchart.
+  subType: 'none',
   candles: [],
   lastCandle: null,
   ws: null,
@@ -2491,7 +2503,9 @@ const MobileBars = (() => {
     document.querySelectorAll('#mTfHost .tf-btn').forEach(b => bbTfs.appendChild(b));
     Array.from($('mToolsHost').children).forEach(b => tools.appendChild(b));
     const ex = $('exchangeSwitch');
-    if (ex) topbar.insertBefore(ex, $('symbolBox'));
+    // Exchange-Switch zurueck an den Anfang der Topbar (die Symbol-Box
+    // sitzt jetzt in der Bottom-Bar und taugt nicht mehr als Anker).
+    if (ex) topbar.insertBefore(ex, topbar.querySelector('.topbar-right'));
     // Die Kennzahlen wurden nie verschoben — sie stehen durchgehend unten.
 
     movedToSheets = false;
@@ -2503,17 +2517,11 @@ const MobileBars = (() => {
     if (typeof resizeCharts === 'function') resizeCharts();
   }
 
-  /** Haelt die Trigger-Beschriftungen aktuell (Timeframe, Preis, Aenderung). */
-  function updateTriggers(t) {
+  /** Haelt die Trigger-Beschriftung aktuell (nur noch der Timeframe —
+      Kurs und Aenderung stehen dauerhaft in der Bottom-Bar). */
+  function updateTriggers() {
     const tfLabel = $('mTfBtnLabel');
     if (tfLabel) tfLabel.textContent = State.tf;
-    if (!t) return;
-    const p = $('mStatsBtnPrice'), c = $('mStatsBtnChg');
-    if (p) p.textContent = fmt.price(t.price);
-    if (c) {
-      c.textContent = fmt.pct(t.change);
-      c.className = 'm-trigger-sub ' + (t.change >= 0 ? 'green' : 'red');
-    }
   }
 
   function init() {
@@ -2526,7 +2534,11 @@ const MobileBars = (() => {
     }
     $('mToolsBtn').onclick = () => open('tools');
     $('mTfBtn').onclick    = () => open('tf');
-    $('mStatsBtn').onclick = () => open('stats');
+    // mStatsBtn gibt es nicht mehr: Kurs und Kennzahlen stehen dauerhaft in
+    // der Bottom-Bar. Das Stats-Sheet bleibt (Exchange-Umschalter), wird aber
+    // nicht mehr ueber einen eigenen Trigger geoeffnet.
+    const statsBtn = $('mStatsBtn');
+    if (statsBtn) statsBtn.onclick = () => open('stats');
     $('mToolsClose').onclick = () => close('tools');
     $('mTfClose').onclick    = () => close('tf');
     $('mStatsClose').onclick = () => close('stats');
