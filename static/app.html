@@ -2162,6 +2162,13 @@ const MobileBars = (() => {
   }
 
   function init() {
+    // Defensiv: laeuft init() zu frueh (Markup noch nicht geparst), wuerde
+    // jeder Zugriff hier einen TypeError werfen und den restlichen Skriptblock
+    // abbrechen — inklusive der Chart-Initialisierung. Lieber sauber warten.
+    if (!$('mToolsBtn') || !$('mToolsModal') || !$('mStatsHost')) {
+      document.addEventListener('DOMContentLoaded', init, { once: true });
+      return;
+    }
     $('mToolsBtn').onclick = () => open('tools');
     $('mTfBtn').onclick    = () => open('tf');
     $('mStatsBtn').onclick = () => open('stats');
@@ -2276,11 +2283,6 @@ document.querySelectorAll('.tf-btn').forEach(b => b.onclick = () => switchTF(b.d
 document.querySelectorAll('.subchart-tab').forEach(t => t.onclick = () => switchSub(t.dataset.sub));
 // Exchange switcher
 document.querySelectorAll('.ex-btn').forEach(b => b.onclick = () => switchExchange(b.dataset.ex));
-// Mobile Kopfleiste aufbauen — ZWINGEND nach dem Registrieren der tf-btn- und
-// ex-btn-Handler: init() verschiebt diese Buttons in die Sheets, und ein
-// vorher verschobener Button wuerde von den obigen Selektoren nicht mehr
-// erfasst (Binance/Bybit und die Timeframes waeren auf Mobil ohne Funktion).
-MobileBars.init();
 
 // Volume Profile Toggles
 document.getElementById('vpToggle').onclick = function() {
@@ -2534,6 +2536,13 @@ fetch('/api/ai/health').then(r=>r.json()).then(d => {
 }).catch(()=>{});
 
 async function init() {
+  // Mobile Kopfleiste zuerst aufbauen: MobileBars.init() verschiebt Timeframes,
+  // Werkzeuge und Kennzahlen in die Bottom-Sheets. Der Aufruf steht bewusst
+  // NICHT weiter oben im Skript — dort ist das Sheet-Markup noch nicht geparst
+  // und getElementById liefert null, was den restlichen Block abbrechen wuerde
+  // (Chart bleibt dann ohne Groesse und ohne Daten). init() selbst wartet
+  // zusaetzlich auf DOMContentLoaded, falls es doch zu frueh gerufen wird.
+  MobileBars.init();
   await initDropdown();
   await loadWatchlist();
   await loadSettingsPanel();
@@ -2552,7 +2561,15 @@ async function init() {
   // WS ping
   setInterval(() => { if (State.ws && State.ws.readyState===1) State.ws.send(JSON.stringify({action:'ping'})); }, 25000);
 }
-init();
+// Erst starten, wenn das komplette Markup geparst ist. Der Skriptblock endet
+// vor den Bottom-Sheets am Dokumentende — ein sofortiger Aufruf wuerde deren
+// Elemente noch nicht sehen (getElementById -> null), einen TypeError werfen
+// und damit die restliche Initialisierung inklusive Chart-Aufbau abbrechen.
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init, { once: true });
+} else {
+  init();
+}
 </script>
 
 <!-- ══ INDIKATOR-BROWSER ══ -->
