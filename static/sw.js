@@ -11,7 +11,7 @@
  * damit der Scope das komplette Origin abdeckt.
  */
 
-const VERSION = 'tradepro-v1';
+const VERSION = 'tradepro-v2';
 const SHELL_CACHE = `${VERSION}-shell`;
 const ASSET_CACHE = `${VERSION}-assets`;
 const OFFLINE_URL = '/offline.html';
@@ -92,6 +92,28 @@ async function handleAsset(request) {
   return new Response('', { status: 504, statusText: 'Offline' });
 }
 
+/** Code-Assets (JS/CSS) network-first: stale-while-revalidate lieferte hier
+ *  nach einem Deploy noch eine ganze Sitzung lang die ALTE Datei aus. Wenn
+ *  dann neues HTML auf altes JS trifft, fehlen Handler und die UI wirkt kaputt.
+ *  Der Cache bleibt nur als Offline-Fallback. */
+async function handleCodeAsset(request) {
+  const cache = await caches.open(ASSET_CACHE);
+  try {
+    const response = await fetch(request);
+    if (response && response.ok && response.type === 'basic') {
+      cache.put(request, response.clone()).catch(() => {});
+    }
+    return response;
+  } catch (_) {
+    const cached = await cache.match(request);
+    return cached || new Response('', { status: 504, statusText: 'Offline' });
+  }
+}
+
+function isCodeAsset(url) {
+  return /\.(?:js|css|webmanifest)$/i.test(url.pathname);
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
@@ -108,6 +130,6 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (url.pathname.startsWith('/static/')) {
-    event.respondWith(handleAsset(request));
+    event.respondWith(isCodeAsset(url) ? handleCodeAsset(request) : handleAsset(request));
   }
 });
