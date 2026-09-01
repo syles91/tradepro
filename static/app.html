@@ -244,8 +244,12 @@ body {
 /* Die Symbol-Box sitzt jetzt hier unten und braucht einen Positions-Anker
    fuer ihr nach oben aufklappendes Dropdown. */
 .bottom-bar .symbol-box { position: relative; flex-shrink: 0; }
+/* Die Kennzahlen nehmen den freien Raum ein, damit Symbol-Auswahl und
+   Zeitebene rechtsbuendig anliegen (Zeitebene ganz aussen). */
+.bottom-bar .ticker-stats { flex: 1; min-width: 0; }
+/* Trenner links statt rechts: die Timeframes stehen jetzt am rechten Rand. */
 .bb-tfs { display: flex; align-items: center; gap: 3px; flex-shrink: 0;
-  padding-right: 12px; border-right: 1px solid var(--border); }
+  padding-left: 12px; border-left: 1px solid var(--border); }
 
 /* RIGHT: Futures Panels */
 .sidebar {
@@ -415,8 +419,10 @@ body {
 /* ════════ SYMBOL DROPDOWN ════════ */
 .dropdown {
   /* Klappt nach OBEN auf — die Symbol-Box sitzt jetzt in der Bottom-Bar
-     am unteren Fensterrand, nach unten waere kein Platz. */
-  position: absolute; bottom: calc(100% + 8px); left: 0;
+     am unteren Fensterrand, nach unten waere kein Platz. Rechtsbuendig,
+     weil die Box zweit-rechts steht und die Liste sonst ueber den
+     Fensterrand hinauslaufen wuerde. */
+  position: absolute; bottom: calc(100% + 8px); right: 0; left: auto;
   background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
   width: 280px; max-height: 400px; overflow-y: auto; z-index: 200;
   box-shadow: 0 -8px 32px rgba(0,0,0,.5); display: none;
@@ -883,7 +889,7 @@ button, .wl-item, .side-tab, .subchart-tab, .symbol-box { touch-action: manipula
      an den Kurs und Kennzahlen wandern sollten. Sie sitzt oberhalb der
      Mobile-Nav und scrollt horizontal, weil dort nicht alles nebeneinander
      passt. Die Timeframes liegen mobil weiterhin im Sheet (MobileBars
-     raeumt #bbTfs leer), darum faellt der Trenner links weg. */
+     raeumt #bbTfs leer), darum entfaellt dort auch der Trenner. */
   /* WICHTIG: kein overflow auf der Bar selbst — sonst schneidet sie das
      nach oben aufklappende Symbol-Dropdown ab (gleiche Falle wie zuvor
      bei .subchart-tabs). Gescrollt wird stattdessen der Kennzahlen-Block. */
@@ -899,7 +905,10 @@ button, .wl-item, .side-tab, .subchart-tab, .symbol-box { touch-action: manipula
   .bottom-bar .symbol-box { flex-shrink: 0; padding: 5px 9px; }
   .bottom-bar .symbol-name { font-size: 12px; }
   .bottom-bar #mTfBtn { flex-shrink: 0; min-width: 44px; min-height: 30px; }
+  /* Mobil raeumt MobileBars die Timeframes ins Sheet — die leere Huelle
+     samt Trennlinie darf dann keinen Platz belegen. */
   .bb-tfs:empty { display: none; }
+  .bb-tfs { padding-left: 8px; }
   .bottom-bar .ticker-stats { gap: 14px; }
   .bottom-bar .stat-label { font-size: 9px; }
   .bottom-bar .stat-value { font-size: 12px; }
@@ -1325,11 +1334,19 @@ body.pwa-standalone #fullscreenBtn { display: inline-flex; }
 </div>
 
 <!-- BOTTOM BAR
-     Ganz unten am Fensterrand: Timeframes links, Marktdaten rechts.
-     Entlastet die Topbar und haelt Kurs und Zeitebene dort, wo beim
-     Traden ohnehin hingeschaut wird. -->
+     Ganz unten am Fensterrand. Reihenfolge von links nach rechts:
+     Marktdaten, dann Symbol-Auswahl, dann die Zeitebene ganz rechts. -->
 <div class="bottom-bar" id="bottomBar">
-  <!-- Symbol-Auswahl ganz links: klappt nach OBEN auf, weil die Leiste
+  <div class="ticker-stats" id="tickerStats">
+    <div class="stat"><span class="stat-label">Preis</span><span class="stat-value live-price" id="tPrice">–</span></div>
+    <div class="stat"><span class="stat-label">24h</span><span class="stat-value" id="tChange">–</span></div>
+    <div class="stat"><span class="stat-label">24h Hoch</span><span class="stat-value" id="tHigh">–</span></div>
+    <div class="stat"><span class="stat-label">24h Tief</span><span class="stat-value" id="tLow">–</span></div>
+    <div class="stat"><span class="stat-label">24h Vol</span><span class="stat-value" id="tVol">–</span></div>
+    <div class="stat"><span class="stat-label">Open Interest</span><span class="stat-value" id="tOi">–</span></div>
+    <div class="stat"><span class="stat-label">Funding</span><span class="stat-value" id="tFunding">–</span></div>
+  </div>
+  <!-- Symbol-Auswahl zweit-rechts. Klappt nach OBEN auf, weil die Leiste
        am unteren Fensterrand sitzt. -->
   <div class="symbol-box" id="symbolBox">
     <span class="symbol-name" id="symbolName">BTCUSDT</span>
@@ -1339,8 +1356,8 @@ body.pwa-standalone #fullscreenBtn { display: inline-flex; }
       <div id="ddList"></div>
     </div>
   </div>
-  <!-- Mobiler Timeframe-Trigger: oeffnet das TF-Sheet, sitzt jetzt ebenfalls
-       unten. Per CSS nur unterhalb des Mobile-Breakpoints sichtbar. -->
+  <!-- Mobiler Timeframe-Trigger: oeffnet das TF-Sheet. Steht direkt vor
+       den Timeframes und damit ebenfalls ganz rechts. -->
   <button class="m-trigger" id="mTfBtn" title="Timeframe"><span id="mTfBtnLabel">5m</span><span class="m-trigger-caret">▾</span></button>
   <div class="bb-tfs" id="bbTfs">
     <button class="tf-btn" data-tf="1m">1m</button>
@@ -1350,15 +1367,6 @@ body.pwa-standalone #fullscreenBtn { display: inline-flex; }
     <button class="tf-btn" data-tf="1h">1h</button>
     <button class="tf-btn" data-tf="4h">4h</button>
     <button class="tf-btn" data-tf="1d">1D</button>
-  </div>
-  <div class="ticker-stats" id="tickerStats">
-    <div class="stat"><span class="stat-label">Preis</span><span class="stat-value live-price" id="tPrice">–</span></div>
-    <div class="stat"><span class="stat-label">24h</span><span class="stat-value" id="tChange">–</span></div>
-    <div class="stat"><span class="stat-label">24h Hoch</span><span class="stat-value" id="tHigh">–</span></div>
-    <div class="stat"><span class="stat-label">24h Tief</span><span class="stat-value" id="tLow">–</span></div>
-    <div class="stat"><span class="stat-label">24h Vol</span><span class="stat-value" id="tVol">–</span></div>
-    <div class="stat"><span class="stat-label">Open Interest</span><span class="stat-value" id="tOi">–</span></div>
-    <div class="stat"><span class="stat-label">Funding</span><span class="stat-value" id="tFunding">–</span></div>
   </div>
 </div>
 

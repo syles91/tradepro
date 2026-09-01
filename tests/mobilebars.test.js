@@ -162,9 +162,9 @@ chk('Desktop: Exchange zurueck in Topbar', !!d.querySelector('.topbar > #exchang
 chk('Desktop: Sheets leer', tfHost.children.length === 0 && statsHost.children.length === 0 && toolsHost.children.length === 0);
 chk('Desktop: TF-Reihenfolge korrekt',
   [...d.querySelectorAll('#bbTfs .tf-btn')].map(b => b.dataset.tf).join(',') === '1m,3m,5m,15m,1h,4h,1d');
-chk('Desktop: Bottom-Bar mit Symbol, TF-Trigger, TFs und Kennzahlen',
+chk('Desktop: Bottom-Bar mit Kennzahlen, Symbol, TF-Trigger und TFs',
   [...d.getElementById('bottomBar').children].map(e => e.id).join(',')
-    === 'symbolBox,mTfBtn,bbTfs,tickerStats',
+    === 'tickerStats,symbolBox,mTfBtn,bbTfs',
   [...d.getElementById('bottomBar').children].map(e => e.id).join(','));
 chk('Desktop: Symbol-Box sitzt unten, nicht in der Topbar',
   !d.querySelector('.topbar #symbolBox'));

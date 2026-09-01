@@ -189,6 +189,15 @@ setTimeout(() => {
   chk('Symbol-Dropdown nicht mehr top-verankert', !/top:\s*52px/.test(ddRule));
   chk('Suchfeld vorhanden', !!d.getElementById('symbolSearch'));
 
+  console.log('── Reihenfolge in der Leiste ──');
+  chk('Timeframe-Bereich ganz rechts', bb.lastElementChild.id === 'bbTfs');
+  chk('TF-Trigger direkt davor (mobil sichtbar)',
+    bb.lastElementChild.previousElementSibling.id === 'mTfBtn');
+  chk('Symbol-Auswahl zweit-rechts',
+    bb.lastElementChild.previousElementSibling
+      .previousElementSibling.id === 'symbolBox');
+  chk('Kennzahlen ganz links', bb.firstElementChild.id === 'tickerStats');
+
   console.log('── Symbol-Fenster mobil (Tastatur-Bug) ──');
   // Kern des Bugs: .dropdown stand mobil auf top:54px, waehrend die
   // Symbol-Box unten sitzt -> Liste ausserhalb des Sichtfelds, nur Tastatur.

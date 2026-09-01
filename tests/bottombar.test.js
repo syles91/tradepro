@@ -58,9 +58,18 @@ chk('7 Kennzahlen in der Bottom-Bar',
 chk('Preis-Element vorhanden', !!bb.querySelector('#tPrice'));
 chk('Open Interest vorhanden', !!bb.querySelector('#tOi'));
 chk('Funding vorhanden', !!bb.querySelector('#tFunding'));
-chk('Reihenfolge: Symbol, TF-Trigger, TFs, Kennzahlen',
-  [...bb.children].map(e => e.id).join(',') === 'symbolBox,mTfBtn,bbTfs,tickerStats',
+// Zeitebene ganz rechts, Symbol-Auswahl direkt davor, Kennzahlen links.
+chk('Reihenfolge: Kennzahlen, Symbol, TF-Trigger, TFs',
+  [...bb.children].map(e => e.id).join(',') === 'tickerStats,symbolBox,mTfBtn,bbTfs',
   [...bb.children].map(e => e.id).join(','));
+chk('Timeframes stehen ganz rechts',
+  bb.lastElementChild.id === 'bbTfs');
+chk('Symbol-Auswahl steht zweit-rechts (vor dem TF-Block)',
+  d.getElementById('symbolBox').compareDocumentPosition(
+    d.getElementById('bbTfs')) & 4);
+chk('Kennzahlen fuellen den Raum links', cs(d.getElementById('tickerStats')).flexGrow === '1');
+chk('Symbolliste rechtsbuendig (laeuft nicht ueber den Rand)',
+  /\.dropdown\s*\{[^}]*right:\s*0/.test(html));
 
 // Direktes Kind von <body> und letzte sichtbare Leiste vor den Overlays:
 // nur so sitzt sie wirklich am unteren Fensterrand.
