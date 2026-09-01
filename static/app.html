@@ -268,6 +268,28 @@ body {
 .lm-cluster.up .lm-c-usd { color: var(--red-br); }
 .lm-cluster.down .lm-c-usd { color: var(--green-br); }
 .lm-note { padding: 6px 10px 12px; font-size: 9px; color: var(--muted); line-height: 1.45; }
+
+/* Modus-Umschalter Map / Heatmap */
+.lm-modes { display: flex; gap: 4px; padding: 8px 10px 0; flex-shrink: 0; }
+.lm-mode { flex: 1; background: var(--panel2); border: 1px solid var(--border);
+  color: var(--muted); font-size: 11px; font-weight: 700; padding: 7px 8px;
+  border-radius: 6px; cursor: pointer; min-height: 30px; }
+.lm-mode.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+/* Heatmap */
+.lm-heat-controls { display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; flex-shrink: 0; }
+.lm-thr-label { font-size: 10px; color: var(--muted); white-space: nowrap; }
+.lm-thr-label b { color: var(--txt); font-variant-numeric: tabular-nums; }
+.lm-thr { flex: 1; accent-color: var(--blue); min-height: 22px; }
+.lm-heat-wrap { position: relative; height: 340px; flex-shrink: 0; padding: 0 4px; }
+.lm-heat-wrap canvas { width: 100%; height: 100%; display: block; }
+.lm-scale { display: flex; align-items: center; gap: 8px; padding: 6px 10px 2px;
+  font-size: 9px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.lm-scale-bar { flex: 1; height: 8px; border-radius: 3px;
+  background: linear-gradient(to right, #10041c, #3b0f70, #8c2981,
+                              #de4968, #fe9f6d, #fcfdbf); }
+@media (max-width: 820px) { .lm-heat-wrap { height: 300px; } }
 @media (max-width: 820px) { .lm-chart-wrap { height: 260px; } }
 .liq-row {
   display: flex; align-items: center; justify-content: space-between;
@@ -1142,6 +1164,10 @@ body.pwa-standalone #fullscreenBtn { display: inline-flex; }
 
     <!-- TAB: Liquidation Map -->
     <div class="side-pane" id="paneLiqMap" style="display:none">
+      <div class="lm-modes">
+        <button class="lm-mode active" data-mode="map">Liquidation Map</button>
+        <button class="lm-mode" data-mode="heat">Heatmap</button>
+      </div>
       <div class="lm-toolbar">
         <div class="lm-windows" id="lmWindows">
           <button class="lm-win" data-win="12h">12h</button>
@@ -1156,8 +1182,25 @@ body.pwa-standalone #fullscreenBtn { display: inline-flex; }
       <div class="lm-chart-wrap"><canvas id="lmCanvas"></canvas>
         <div class="lm-loading" id="lmLoading">Lade Liquidation Map…</div>
       </div>
+
+      <!-- Heatmap-Ansicht (Zeit x Preis) -->
+      <div class="lm-heat-controls" id="lmHeatControls" style="display:none">
+        <label class="lm-thr-label">Liquidity Threshold
+          <b id="lmThrVal">0.00</b></label>
+        <input type="range" id="lmThreshold" class="lm-thr"
+               min="0" max="0.9" step="0.05" value="0">
+      </div>
+      <div class="lm-heat-wrap" id="lmHeatWrap" style="display:none">
+        <canvas id="lmHeatCanvas"></canvas>
+        <div class="lm-loading" id="lmHeatLoading">Lade Heatmap…</div>
+      </div>
+      <div class="lm-scale" id="lmScale" style="display:none">
+        <span id="lmScaleMin">0</span>
+        <div class="lm-scale-bar"></div>
+        <span id="lmScaleMax">–</span>
+      </div>
       <div class="lm-meta" id="lmMeta"></div>
-      <div class="panel-head">🎯 Stärkste Liquidations-Cluster</div>
+      <div class="panel-head" id="lmClusterHead">🎯 Stärkste Liquidations-Cluster</div>
       <div class="lm-clusters" id="lmClusters"></div>
       <div class="lm-note">Modell-Rekonstruktion aus öffentlichen Futures-Daten
         (Klines, Taker-Delta, Open Interest) – keine Börsen-Innenansicht.</div>
@@ -2300,9 +2343,9 @@ function reloadAll() {
   // Liq-Map ist symbol-/exchange-gebunden -> Cache verwerfen, nur bei
   // sichtbarem Tab sofort neu laden (sonst lazy beim Tab-Wechsel).
   if (typeof LM !== 'undefined') {
-    LM.data = null;
+    LM.data = null; LM.heat = null;
     const lmPane = document.getElementById('paneLiqMap');
-    if (lmPane && lmPane.style.display !== 'none') loadLiquidationMap();
+    if (lmPane && lmPane.style.display !== 'none') loadLiqActive();
   }
   loadSignals();
   const hint = State.exchange === 'binance'
@@ -2381,7 +2424,8 @@ let obActive = false;
 // Bewusst `var`: reloadAll() kann waehrend des Boots laufen, bevor diese
 // Zeile ausgefuehrt ist. Mit const/let waere der typeof-Guard dort ein
 // TDZ-ReferenceError; `var` hoistet sauber auf undefined.
-var LM = { window: '1d', data: null, loading: false, hover: null };
+var LM = { window: '1d', data: null, loading: false, hover: null,
+           mode: 'map', heat: null, heatLoading: false, threshold: 0 };
 
 function lmFmtUsd(v) {
   const a = Math.abs(v);
@@ -2429,6 +2473,16 @@ function renderLiqMapLegend() {
 function renderLiqMapMeta() {
   const el = document.getElementById('lmMeta');
   if (!el) return;
+  if (LM.mode === 'heat') {
+    const h = LM.heat;
+    if (!h) { el.innerHTML = ''; return; }
+    el.innerHTML =
+      `<span>Preis <b>${lmFmtPrice(h.price)}</b></span>` +
+      `<span>Open Interest <b>${lmFmtUsd(h.oiUsd)}</b></span>` +
+      `<span>Auflösung <b>${h.interval} · ${h.matrix.length}×${h.priceBins}</b></span>` +
+      `<span>Peak-Zelle <b>${lmFmtUsd(h.maxValue)}</b></span>`;
+    return;
+  }
   const d = LM.data;
   if (!d) { el.innerHTML = ''; return; }
   el.innerHTML =
@@ -2557,13 +2611,197 @@ function renderLiqMap() {
   drawLiqMap();
 }
 
+// ── Heatmap (Zeit x Preis) ──────────────────────────────────────────────────
+// Inferno-artige Palette wie bei CoinGlass: dunkelviolett -> magenta ->
+// orange -> hellgelb. Stuetzstellen werden linear interpoliert.
+const LM_PALETTE = [
+  [4, 2, 15], [26, 11, 64], [59, 15, 112], [111, 26, 129],
+  [140, 41, 129], [190, 62, 108], [222, 73, 104],
+  [246, 110, 92], [254, 159, 109], [252, 253, 191],
+];
+
+function lmHeatColor(t) {
+  t = Math.max(0, Math.min(1, t));
+  const n = LM_PALETTE.length - 1;
+  const i = Math.min(Math.floor(t * n), n - 1);
+  const f = t * n - i;
+  const a = LM_PALETTE[i], b = LM_PALETTE[i + 1];
+  return `rgb(${Math.round(a[0] + (b[0] - a[0]) * f)},` +
+         `${Math.round(a[1] + (b[1] - a[1]) * f)},` +
+         `${Math.round(a[2] + (b[2] - a[2]) * f)})`;
+}
+
+async function loadLiqHeatmap() {
+  if (LM.heatLoading) return;
+  LM.heatLoading = true;
+  const ld = document.getElementById('lmHeatLoading');
+  if (ld) { ld.textContent = 'Lade Heatmap…'; ld.classList.remove('hidden'); }
+  try {
+    const res = await fetch(`/api/liquidation_heatmap?symbol=${State.symbol}` +
+      `&exchange=${State.exchange}&window=${LM.window}&bins=100` +
+      `&threshold=${LM.threshold}`);
+    const d = await res.json();
+    LM.heat = (d && d.matrix && d.matrix.length) ? d : null;
+    if (!LM.heat && ld) ld.textContent = d && d.error ? ('Fehler: ' + d.error)
+                                                      : 'Keine Daten verfügbar.';
+  } catch (e) {
+    LM.heat = null;
+    if (ld) ld.textContent = 'Netzwerkfehler beim Laden.';
+  }
+  LM.heatLoading = false;
+  if (LM.heat && ld) ld.classList.add('hidden');
+  drawLiqHeatmap();
+  renderLiqMapMeta();
+}
+
+function drawLiqHeatmap() {
+  const cv = document.getElementById('lmHeatCanvas');
+  if (!cv || !cv.parentElement) return;
+  const d = LM.heat;
+  const W = cv.parentElement.clientWidth, H = cv.parentElement.clientHeight;
+  if (!W || !H) return;
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = W * dpr; cv.height = H * dpr;
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  // Skalen-Beschriftung aktualisieren
+  const smax = document.getElementById('lmScaleMax');
+  if (smax) smax.textContent = d ? lmFmtUsd(d.maxValue) : '–';
+
+  if (!d || !d.matrix.length) return;
+
+  const padR = 52, padB = 18, padT = 4, padL = 2;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  if (plotW <= 0 || plotH <= 0) return;
+
+  const cols = d.matrix.length, rows = d.priceBins || d.matrix[0].length;
+  const lo = d.low, hi = d.high, span = (hi - lo) || 1;
+  const cw = plotW / cols, ch = plotH / rows;
+  const maxV = d.maxValue || 1;
+  const yOf = p => padT + plotH - ((p - lo) / span) * plotH;
+
+  // Hintergrund
+  ctx.fillStyle = '#0d0518';
+  ctx.fillRect(padL, padT, plotW, plotH);
+
+  // Heatmap-Zellen. Zusammenhaengende Bereiche werden leicht ueberlappend
+  // gezeichnet (+0.6px), sonst entstehen durch Rundung sichtbare Luecken.
+  for (let x = 0; x < cols; x++) {
+    const col = d.matrix[x];
+    const px = padL + x * cw;
+    for (let y = 0; y < rows; y++) {
+      const v = col[y];
+      if (v <= 0) continue;
+      // Wurzel-Skalierung: sonst dominiert die staerkste Zelle alles andere.
+      ctx.fillStyle = lmHeatColor(Math.sqrt(v / maxV));
+      const py = padT + plotH - (y + 1) * ch;
+      ctx.fillRect(px, py, cw + 0.6, ch + 0.6);
+    }
+  }
+
+  // Kerzen-Overlay
+  const bodyW = Math.max(1, Math.min(cw * 0.65, 6));
+  d.candles.forEach((c, i) => {
+    const xc = padL + (i + 0.5) * cw;
+    const up = c.close >= c.open;
+    const color = up ? '#2ebd9e' : '#f0616a';
+    ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 1;
+    const yH = yOf(c.high), yL = yOf(c.low);
+    ctx.beginPath();
+    ctx.moveTo(Math.round(xc) + 0.5, yH);
+    ctx.lineTo(Math.round(xc) + 0.5, yL);
+    ctx.stroke();
+    const yO = yOf(c.open), yC = yOf(c.close);
+    const top = Math.min(yO, yC);
+    ctx.fillRect(xc - bodyW / 2, top, bodyW, Math.max(1, Math.abs(yC - yO)));
+  });
+
+  // Preis-Achse rechts
+  ctx.fillStyle = '#787b86';
+  ctx.font = '9px system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  for (let i = 0; i <= 5; i++) {
+    const p = lo + (span * i) / 5;
+    const y = yOf(p);
+    ctx.fillText(lmFmtPrice(p), padL + plotW + 5, Math.min(H - padB, Math.max(9, y + 3)));
+  }
+
+  // Zeit-Achse unten
+  ctx.textAlign = 'center';
+  const fmtT = ts => {
+    const dt = new Date(ts * 1000);
+    const p2 = n => String(n).padStart(2, '0');
+    return p2(dt.getDate()) + '.' + p2(dt.getMonth() + 1) + ' ' +
+           p2(dt.getHours()) + ':' + p2(dt.getMinutes());
+  };
+  [0, Math.floor(cols / 2), cols - 1].forEach((idx, n) => {
+    if (idx < 0 || idx >= d.times.length) return;
+    const x = padL + (idx + 0.5) * cw;
+    ctx.textAlign = n === 0 ? 'left' : n === 2 ? 'right' : 'center';
+    ctx.fillText(fmtT(d.times[idx]),
+                 Math.max(padL + 2, Math.min(padL + plotW - 2, x)), H - 5);
+  });
+}
+
+// Umschalten zwischen Map- und Heatmap-Ansicht.
+function setLiqMode(mode) {
+  LM.mode = mode;
+  const show = (id, on) => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = on ? '' : 'none';
+  };
+  const isMap = mode === 'map';
+  show('lmLegend', isMap);
+  show('lmScale', !isMap);
+  show('lmHeatControls', !isMap);
+  show('lmClusterHead', isMap);
+  show('lmClusters', isMap);
+  const mapWrap = document.querySelector('.lm-chart-wrap');
+  if (mapWrap) mapWrap.style.display = isMap ? '' : 'none';
+  show('lmHeatWrap', !isMap);
+  document.querySelectorAll('.lm-mode').forEach(b =>
+    b.classList.toggle('active', b.dataset.mode === mode));
+
+  if (isMap) { LM.data ? renderLiqMap() : loadLiquidationMap(); }
+  else { LM.heat ? (drawLiqHeatmap(), renderLiqMapMeta()) : loadLiqHeatmap(); }
+}
+
+// Aktive Ansicht neu laden (Fensterwechsel, Refresh, Symbolwechsel).
+function loadLiqActive() {
+  if (LM.mode === 'heat') loadLiqHeatmap(); else loadLiquidationMap();
+}
+
+document.querySelectorAll('.lm-mode').forEach(b =>
+  b.onclick = () => setLiqMode(b.dataset.mode));
+
+const lmThr = document.getElementById('lmThreshold');
+if (lmThr) {
+  const lbl = document.getElementById('lmThrVal');
+  lmThr.oninput = () => { if (lbl) lbl.textContent = Number(lmThr.value).toFixed(2); };
+  // Erst beim Loslassen neu laden — sonst feuert jeder Pixel einen Request.
+  lmThr.onchange = () => {
+    LM.threshold = Number(lmThr.value);
+    if (lbl) lbl.textContent = LM.threshold.toFixed(2);
+    loadLiqHeatmap();
+  };
+}
+window.addEventListener('resize', () => { if (LM.heat) drawLiqHeatmap(); });
+
 document.querySelectorAll('.lm-win').forEach(b => b.onclick = () => {
   document.querySelectorAll('.lm-win').forEach(x => x.classList.toggle('active', x === b));
   LM.window = b.dataset.win;
-  loadLiquidationMap();
+  // Beide Caches verwerfen: das Zeitfenster gilt fuer Map und Heatmap.
+  LM.data = null; LM.heat = null;
+  loadLiqActive();
 });
 const lmRefreshBtn = document.getElementById('lmRefresh');
-if (lmRefreshBtn) lmRefreshBtn.onclick = () => loadLiquidationMap();
+if (lmRefreshBtn) lmRefreshBtn.onclick = () => {
+  if (LM.mode === 'heat') LM.heat = null; else LM.data = null;
+  loadLiqActive();
+};
 window.addEventListener('resize', () => { if (LM.data) drawLiqMap(); });
 
 document.querySelectorAll('.side-tab').forEach(t => t.onclick = () => {
@@ -2577,7 +2815,7 @@ document.querySelectorAll('.side-tab').forEach(t => t.onclick = () => {
   document.getElementById('paneStats').style.display = tab === 'stats' ? 'flex' : 'none';
   obActive = tab === 'orderbook';
   if (obActive) { loadOrderbook(); setTimeout(drawDepthChart, 60); }
-  if (tab === 'liqmap') { LM.data ? setTimeout(renderLiqMap, 60) : loadLiquidationMap(); }
+  if (tab === 'liqmap') { setTimeout(() => setLiqMode(LM.mode), 60); }
   if (tab === 'signals') { loadSignals(); loadOpenSignals(true); }
   if (tab === 'strategies') loadStrategies();
   if (tab === 'stats') loadAnalytics();

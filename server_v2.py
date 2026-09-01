@@ -586,7 +586,8 @@ hub = Hub()
 # the new package can now grow strategy-by-strategy without bloating server_v2.py.
 from tradepro.api.routes_signals import setup as setup_signal_routes
 from tradepro.api.routes_account import router as account_router
-from tradepro.market.liquidations import liquidation_map, leverage_palette
+from tradepro.market.liquidations import (liquidation_map, leverage_palette,
+                                          liquidation_heatmap)
 app.include_router(setup_signal_routes(hub))
 app.include_router(account_router)
 
@@ -772,6 +773,23 @@ async def api_liquidation_map(symbol: str = "BTCUSDT", exchange: str = "binance"
         return JSONResponse(data)
     except Exception as e:
         return JSONResponse({"error": str(e), "levels": []}, status_code=502)
+
+
+@app.get("/api/liquidation_heatmap")
+async def api_liquidation_heatmap(symbol: str = "BTCUSDT", exchange: str = "binance",
+                                  window: str = "1d", bins: int = 100,
+                                  threshold: float = 0.0):
+    """
+    2D-Liquidation-Heatmap (Zeit x Preis) im CoinGlass-Stil, aus freien
+    Boersendaten. `threshold` blendet schwache Zellen aus (0..0.99).
+    """
+    try:
+        data = await liquidation_heatmap(symbol=symbol, exchange=exchange,
+                                         window=window, price_bins=bins,
+                                         threshold=threshold)
+        return JSONResponse(data)
+    except Exception as e:
+        return JSONResponse({"error": str(e), "matrix": []}, status_code=502)
 
 
 @app.get("/api/symbols")

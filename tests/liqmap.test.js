@@ -23,8 +23,8 @@ chk('Tab-Button "liqmap" vorhanden', /data-tab="liqmap"/.test(html));
 chk('Pane #paneLiqMap vorhanden', /id="paneLiqMap"/.test(html));
 chk('Tab-Switch schaltet paneLiqMap',
   /paneLiqMap'\)\.style\.display\s*=\s*tab === 'liqmap'/.test(html));
-chk('Tab-Switch laedt die Map',
-  /tab === 'liqmap'.*loadLiquidationMap\(\)/s.test(html));
+chk('Tab-Switch aktiviert die Liq-Ansicht',
+  /tab === 'liqmap'.*setLiqMode\(LM\.mode\)/s.test(html));
 chk('ruft /api/liquidation_map auf', /\/api\/liquidation_map\?symbol=/.test(html));
 chk('reloadAll invalidiert den Map-Cache',
   /LM\.data = null;/.test(html) && /typeof LM !== 'undefined'/.test(html));
@@ -176,6 +176,116 @@ chk('renderLiqMap() ohne Daten wirft nicht', !threw2, threw2 && threw2.message);
 chk('Legende geleert', d.getElementById('lmLegend').innerHTML === '');
 chk('Cluster zeigen Leermeldung',
   d.getElementById('lmClusters').textContent.includes('Keine Cluster'));
+
+console.log('── Heatmap: Markup & CSS ──');
+['lmHeatCanvas', 'lmHeatWrap', 'lmHeatControls', 'lmThreshold', 'lmThrVal',
+ 'lmScale', 'lmScaleMax', 'lmHeatLoading']
+  .forEach(id => chk('#' + id + ' existiert', !!d.getElementById(id)));
+chk('zwei Modus-Buttons vorhanden', d.querySelectorAll('.lm-mode').length === 2);
+chk('Modus "map" ist initial aktiv',
+  d.querySelector('.lm-mode.active').dataset.mode === 'map');
+chk('Heatmap-Endpoint wird aufgerufen',
+  /\/api\/liquidation_heatmap\?symbol=/.test(html));
+chk('threshold wird an die API uebergeben', /threshold=\$\{LM\.threshold\}/.test(html));
+const hwrap = d.getElementById('lmHeatWrap');
+chk('.lm-heat-wrap hat feste Hoehe', cs(hwrap).height === '340px', cs(hwrap).height);
+chk('.lm-heat-wrap ist positioniert', cs(hwrap).position === 'relative');
+chk('Heatmap startet versteckt', hwrap.style.display === 'none');
+const thr = d.getElementById('lmThreshold');
+chk('Threshold-Slider ist ein range-Input', thr.type === 'range');
+chk('Threshold-Bereich 0..0.9', thr.min === '0' && thr.max === '0.9', thr.min + '..' + thr.max);
+
+console.log('── Heatmap: Farbpalette ──');
+chk('lmHeatColor definiert', typeof w.lmHeatColor === 'function');
+const c00 = w.lmHeatColor(0), c10 = w.lmHeatColor(1);
+chk('t=0 liefert dunkle Farbe', /^rgb\(4,2,15\)$/.test(c00), c00);
+chk('t=1 liefert helle Farbe', /^rgb\(252,253,191\)$/.test(c10), c10);
+chk('Zwischenwert wird interpoliert', /^rgb\(\d+,\d+,\d+\)$/.test(w.lmHeatColor(0.5)));
+chk('Werte ausserhalb 0..1 werden geklemmt',
+  w.lmHeatColor(-5) === c00 && w.lmHeatColor(5) === c10);
+
+console.log('── Heatmap: Renderer (Mock-Daten) ──');
+const COLS = 40, ROWS = 50, HLO = 90, HHI = 110;
+const hmock = {
+  symbol: 'BTCUSDT', exchange: 'binance', window: '1d', interval: '15m',
+  price: 100, oiUsd: 8.4e9, low: HLO, high: HHI, binSize: (HHI - HLO) / ROWS,
+  priceBins: ROWS, maxValue: 5e7,
+  times: Array.from({ length: COLS }, (_, i) => 1700000000 + i * 900),
+  prices: Array.from({ length: ROWS }, (_, i) => HLO + (i + 0.5) * ((HHI - HLO) / ROWS)),
+  candles: Array.from({ length: COLS }, (_, i) => {
+    const p = 100 + Math.sin(i / 4) * 3;
+    return { time: 1700000000 + i * 900, open: p, high: p + 1, low: p - 1,
+             close: p + (i % 2 ? 0.4 : -0.4) };
+  }),
+  matrix: Array.from({ length: COLS }, (_, x) =>
+    Array.from({ length: ROWS }, (_, y) => (x + y) % 7 === 0 ? 5e7 * ((y % 10) / 10) : 0)),
+};
+
+setSize(hwrap, 400, 340);
+Object.keys(calls).forEach(k => calls[k] = 0);
+let threwH = null;
+try { w.LM.heat = hmock; w.drawLiqHeatmap(); } catch (e) { threwH = e; }
+chk('drawLiqHeatmap() laeuft ohne Fehler', !threwH, threwH && threwH.message);
+chk('Zellen + Kerzen werden gezeichnet (fillRect gross)',
+  calls.fillRect > COLS, String(calls.fillRect));
+chk('Kerzendochte werden gezeichnet (stroke >= Spalten)',
+  calls.stroke >= COLS, String(calls.stroke));
+chk('Achsen werden beschriftet (fillText > 5)', calls.fillText > 5, String(calls.fillText));
+chk('Farbskala zeigt das Maximum',
+  /^50\.?0*M$/.test(d.getElementById('lmScaleMax').textContent.trim()),
+  d.getElementById('lmScaleMax').textContent);
+
+console.log('── Heatmap: Modus-Umschaltung ──');
+w.setLiqMode('heat');
+chk('LM.mode ist heat', w.LM.mode === 'heat');
+chk('Heatmap sichtbar', hwrap.style.display !== 'none');
+chk('Map-Chart versteckt', d.querySelector('.lm-chart-wrap').style.display === 'none');
+chk('Legende versteckt', d.getElementById('lmLegend').style.display === 'none');
+chk('Farbskala sichtbar', d.getElementById('lmScale').style.display !== 'none');
+chk('Threshold-Regler sichtbar',
+  d.getElementById('lmHeatControls').style.display !== 'none');
+chk('Cluster-Liste versteckt', d.getElementById('lmClusters').style.display === 'none');
+chk('Cluster-Ueberschrift versteckt',
+  d.getElementById('lmClusterHead').style.display === 'none');
+chk('Heat-Button aktiv',
+  d.querySelector('.lm-mode[data-mode="heat"]').classList.contains('active'));
+chk('Map-Button nicht mehr aktiv',
+  !d.querySelector('.lm-mode[data-mode="map"]').classList.contains('active'));
+
+const metaH = d.getElementById('lmMeta').textContent;
+chk('Meta zeigt Heatmap-Auflösung', metaH.includes('15m') && metaH.includes('40'), metaH);
+chk('Meta zeigt Peak-Zelle', /Peak/.test(metaH), metaH);
+
+w.setLiqMode('map');
+chk('zurueck auf map: Map-Chart wieder sichtbar',
+  d.querySelector('.lm-chart-wrap').style.display !== 'none');
+chk('zurueck auf map: Heatmap versteckt', hwrap.style.display === 'none');
+chk('zurueck auf map: Cluster wieder sichtbar',
+  d.getElementById('lmClusters').style.display !== 'none');
+
+console.log('── Heatmap: Threshold & Caches ──');
+thr.value = '0.45';
+thr.dispatchEvent(new w.Event('change'));
+chk('change setzt LM.threshold', w.LM.threshold === 0.45, String(w.LM.threshold));
+chk('Anzeige aktualisiert', d.getElementById('lmThrVal').textContent === '0.45',
+  d.getElementById('lmThrVal').textContent);
+
+w.LM.data = mock; w.LM.heat = hmock;
+d.querySelector('.lm-win[data-win="1w"]').click();
+chk('Fensterwechsel verwirft beide Caches',
+  w.LM.data === null || w.LM.heat === null);
+chk('Fensterwechsel setzt LM.window', w.LM.window === '1w', w.LM.window);
+chk('loadLiqActive existiert', typeof w.loadLiqActive === 'function');
+
+console.log('── Heatmap: Leerer Zustand ──');
+w.LM.heat = null;
+let threwH2 = null;
+try { w.drawLiqHeatmap(); } catch (e) { threwH2 = e; }
+chk('drawLiqHeatmap() ohne Daten wirft nicht', !threwH2, threwH2 && threwH2.message);
+let threwH3 = null;
+try { w.LM.heat = { matrix: [], times: [], prices: [], candles: [], maxValue: 0 };
+      w.drawLiqHeatmap(); } catch (e) { threwH3 = e; }
+chk('leere Matrix wirft nicht', !threwH3, threwH3 && threwH3.message);
 
 console.log('\n' + (ok ? 'ALLE TESTS BESTANDEN' : 'TESTS FEHLGESCHLAGEN'));
 process.exit(ok ? 0 : 1);
