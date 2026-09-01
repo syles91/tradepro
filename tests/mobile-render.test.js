@@ -88,10 +88,17 @@ chk('.chart-main hoehe nicht fix 0', cs(cmain).height !== '0px', 'height=' + cs(
 chk('#chart position absolute', cs(chart).position === 'absolute', cs(chart).position);
 
 console.log('── Kopfleiste: wirklich nur EINE Zeile? ──');
-chk('.ticker-stats ausgeblendet', cs(d.querySelector('.ticker-stats')).display === 'none');
+chk('.ticker-stats sichtbar (steht jetzt in der Bottom-Bar)',
+  cs(d.querySelector('.ticker-stats')).display !== 'none');
+chk('.bottom-bar sichtbar', cs(d.getElementById('bottomBar')).display !== 'none');
+chk('.ticker-stats liegt NICHT mehr in der Topbar',
+  !d.querySelector('.topbar').contains(d.querySelector('.ticker-stats')));
 chk('.tf-bar ausgeblendet', cs(d.querySelector('.tf-bar')).display === 'none');
 chk('.topbar sichtbar', cs(d.querySelector('.topbar')).display !== 'none');
-chk('Trigger sichtbar', [...d.querySelectorAll('.m-trigger')].every(t => cs(t).display !== 'none'));
+// Der Preis-Trigger entfaellt bewusst — der Kurs steht dauerhaft unten.
+chk('Preis-Trigger ausgeblendet', cs(d.getElementById('mStatsBtn')).display === 'none');
+chk('uebrige Trigger sichtbar',
+  ['mTfBtn', 'mToolsBtn'].every(id => cs(d.getElementById(id)).display !== 'none'));
 
 console.log('── KRITISCH: #chartTools liegt in der versteckten .tf-bar ──');
 const tools = d.getElementById('chartTools');

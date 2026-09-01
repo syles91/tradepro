@@ -59,10 +59,14 @@ const statsHost = d.getElementById('mStatsHost');
 // ── Mobil: alles in den Sheets? ──
 chk('7 Timeframes im TF-Sheet', tfHost.querySelectorAll('.tf-btn').length === 7);
 chk('7 Werkzeuge im Tools-Sheet', toolsHost.querySelectorAll('.chart-type-btn').length === 7);
-chk('7 Kennzahlen im Stats-Sheet', statsHost.querySelectorAll('.stat').length === 7);
+// Die Kennzahlen wandern NICHT mehr ins Sheet — sie bleiben dauerhaft
+// in der Bottom-Bar sichtbar. Im Sheet steht nur noch der Exchange-Switch.
+chk('keine Kennzahlen im Stats-Sheet', statsHost.querySelectorAll('.stat').length === 0);
 chk('Exchange-Switch im Stats-Sheet', !!statsHost.querySelector('#exchangeSwitch'));
-chk('tf-bar ist leer', d.querySelectorAll('.tf-bar .tf-btn').length === 0);
-chk('ticker-stats ist leer', d.querySelectorAll('.ticker-stats .stat').length === 0);
+chk('Bottom-Bar TFs sind leer', d.querySelectorAll('#bbTfs .tf-btn').length === 0);
+chk('Kennzahlen bleiben in der Bottom-Bar',
+  d.querySelectorAll('#bottomBar .stat').length === 7,
+  String(d.querySelectorAll('#bottomBar .stat').length));
 chk('Indikator-Button im Sheet', !!toolsHost.querySelector('#indBrowserBtn'));
 chk('Liq-Heat-Button im Sheet', !!toolsHost.querySelector('#lhToggle'));
 chk('Aktiv-Button im Sheet', !!toolsHost.querySelector('#indManageBtn'));
@@ -141,28 +145,28 @@ chk('Hosts liegen in .m-sheet-Containern',
 chk('Kennzahl-IDs nach Umzug erreichbar',
   ['tPrice', 'tChange', 'tHigh', 'tLow', 'tVol', 'tOi', 'tFunding']
     .every(id => !!d.getElementById(id)));
-chk('Kennzahl-Knoten liegen im Stats-Sheet',
-  ['tPrice', 'tOi'].every(id => statsHost.contains(d.getElementById(id))));
+chk('Kennzahl-Knoten liegen in der Bottom-Bar',
+  ['tPrice', 'tOi'].every(id => d.getElementById('bottomBar').contains(d.getElementById(id))));
 d.getElementById('tPrice').textContent = '43210';
-chk('Kennzahl im Sheet beschreibbar', d.getElementById('tPrice').textContent === '43210');
+chk('Kennzahl beschreibbar', d.getElementById('tPrice').textContent === '43210');
 
 // ── Rotation zu Desktop: alles zurueck an seinen Platz ──
 MOBILE = false;
 listeners.forEach(fn => fn());
-chk('Desktop: Timeframes zurueck in tf-bar', d.querySelectorAll('.tf-bar .tf-btn').length === 7);
+chk('Desktop: Timeframes zurueck in die Bottom-Bar', d.querySelectorAll('#bbTfs .tf-btn').length === 7);
 chk('Desktop: Werkzeuge zurueck in chart-tools', d.querySelectorAll('#chartTools .chart-type-btn').length === 7);
-chk('Desktop: Kennzahlen zurueck in ticker-stats', d.querySelectorAll('.ticker-stats .stat').length === 7);
+chk('Desktop: Kennzahlen weiterhin in der Bottom-Bar', d.querySelectorAll('#bottomBar .stat').length === 7);
 chk('Desktop: Exchange zurueck in Topbar', !!d.querySelector('.topbar > #exchangeSwitch'));
 chk('Desktop: Sheets leer', tfHost.children.length === 0 && statsHost.children.length === 0 && toolsHost.children.length === 0);
 chk('Desktop: TF-Reihenfolge korrekt',
-  [...d.querySelectorAll('.tf-bar .tf-btn')].map(b => b.dataset.tf).join(',') === '1m,3m,5m,15m,1h,4h,1d');
-chk('Desktop: Divider steht nach den TFs',
-  [...d.querySelector('.tf-bar').children].findIndex(e => e.classList.contains('tf-divider')) === 7);
+  [...d.querySelectorAll('#bbTfs .tf-btn')].map(b => b.dataset.tf).join(',') === '1m,3m,5m,15m,1h,4h,1d');
+chk('Desktop: Bottom-Bar enthaelt nur TFs und Kennzahlen',
+  [...d.getElementById('bottomBar').children].map(e => e.id).join(',') === 'bbTfs,tickerStats');
 chk('Desktop: Exchange steht vor der Symbol-Box',
   d.querySelector('#exchangeSwitch').compareDocumentPosition(d.querySelector('#symbolBox')) & 4);
 
 clicks.length = 0;
-d.querySelector('.tf-bar [data-tf="1d"]').click();
+d.querySelector('#bbTfs [data-tf="1d"]').click();
 chk('Desktop: TF-Handler weiterhin aktiv', clicks.includes('tf:1d'));
 d.querySelector('.topbar [data-ex="binance"]').click();
 chk('Desktop: Exchange-Handler weiterhin aktiv', clicks.includes('ex:binance'));
