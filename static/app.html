@@ -498,6 +498,34 @@ body.chart-fullscreen #chartFullscreenBtn { width: auto; min-width: 58px; paddin
 .ind-modal-foot { display: flex; gap: 8px; justify-content: flex-end; padding: 12px 16px; border-top: 1px solid var(--border); }
 .ind-btn { border-radius: 9px; padding: 8px 16px; font-size: 12px; font-weight: 800; cursor: pointer; border: 1px solid var(--border); background: var(--panel); color: var(--txt); }
 .ind-btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+/* ── Verwaltungs-Sheet (Liste aktiver Indikatoren) ───────────────────── */
+.ind-manage-list { overflow-y: auto; flex: 1; padding: 6px 0; min-height: 60px; }
+.ind-manage-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,.04);
+}
+.ind-manage-row.off .ind-manage-name { opacity: .45; }
+.ind-manage-main { flex: 1; min-width: 0; }
+.ind-manage-name { font-size: 13px; font-weight: 700; color: var(--txt); }
+.ind-manage-sub { font-size: 11px; color: var(--muted); margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ind-manage-acts { display: flex; gap: 6px; flex: none; }
+.ind-manage-acts button {
+  background: var(--panel); border: 1px solid var(--border); color: var(--muted);
+  border-radius: 9px; cursor: pointer; font-size: 15px; line-height: 1;
+  min-width: 42px; min-height: 42px; display: grid; place-items: center;
+}
+.ind-manage-acts button:hover { color: var(--txt); background: var(--panel2); }
+.ind-manage-acts button[data-act="remove"]:hover { color: var(--red-br); border-color: var(--red-br); }
+.ind-manage-empty { padding: 22px 16px; text-align: center; color: var(--muted); font-size: 12px; }
+#indManageBtn { position: relative; }
+#indManageBtn .ind-count {
+  position: absolute; top: -5px; right: -5px; min-width: 16px; height: 16px;
+  border-radius: 8px; background: var(--blue); color: #fff;
+  font-size: 9px; font-weight: 800; display: grid; place-items: center; padding: 0 4px;
+}
+#indManageBtn.empty { display: none; }
 /* ── Indikator-Panel: Tablet & Mobile ─────────────────────────────────── */
 @media (max-width: 900px) {
   /* Aktions-Buttons ohne Hover immer sichtbar (Touch kennt kein :hover) */
@@ -549,6 +577,18 @@ body.chart-fullscreen #chartFullscreenBtn { width: auto; min-width: 58px; paddin
   .ind-field input[type="color"] { width: 54px; height: 40px; }
   .ind-btn { padding: 12px 18px; min-height: 46px; font-size: 13px; flex: 1; }
   .ind-modal-foot { padding: 12px 16px calc(12px + var(--safe-bottom)); }
+
+  /* Auf Touch ist die Chart-Legende NUR Anzeige — die Mini-Buttons dort sind
+     zu klein und liegen über dem Chart. Bedienung läuft über das
+     Verwaltungs-Sheet (#indManageModal). Ein Tap auf eine Legendenzeile
+     öffnet dieses Sheet direkt bei der jeweiligen Instanz. */
+  .ind-legend-row .ind-actions { display: none; }
+  .ind-legend-row { padding: 6px 10px; font-size: 11px; min-height: 30px; cursor: pointer; }
+  #chartIndLegend { pointer-events: auto; }
+  .ind-legend { pointer-events: auto; }
+  .ind-manage-row { padding: 12px 14px; min-height: 58px; }
+  .ind-manage-acts button { min-width: 46px; min-height: 46px; font-size: 17px; }
+  #indManageBtn.empty { display: none; }
 }
 
 @media (max-width: 420px) {
@@ -557,6 +597,8 @@ body.chart-fullscreen #chartFullscreenBtn { width: auto; min-width: 58px; paddin
   /* Toolbar-Button auf Icon reduzieren, wie VP/Fullscreen */
   #indBrowserBtn { font-size: 0; width: 38px; padding: 7px 0; justify-content: center; }
   #indBrowserBtn::before { content: 'ƒ'; font-size: 17px; font-style: italic; font-weight: 700; }
+  #indManageBtn { font-size: 0; width: 38px; padding: 7px 0; justify-content: center; }
+  #indManageBtn::before { content: '☰'; font-size: 15px; font-weight: 700; }
   .ind-field { flex-direction: column; align-items: stretch; gap: 6px; }
   .ind-field input[type="number"], .ind-field select { width: 100%; }
 }
@@ -583,6 +625,13 @@ body.chart-fullscreen #chartFullscreenBtn { width: auto; min-width: 58px; paddin
   .ind-search input { font-size: 16px; }
   .ind-modal-close { width: 36px; height: 36px; }
   .ind-actions { opacity: 1; }
+  /* Auch im Querformat: Legende nur Anzeige, Bedienung im Sheet */
+  .ind-legend-row .ind-actions { display: none; }
+  .ind-legend-row { cursor: pointer; min-height: 28px; }
+  #chartIndLegend, .ind-legend { pointer-events: auto; }
+  .ind-manage-acts button { min-width: 44px; min-height: 44px; }
+  .ind-manage-row { min-height: 54px; }
+  .ind-manage-list { max-height: 52dvh; }
   /* Liste bekommt eigenen Scroll, damit die Buttons unten erreichbar bleiben */
   .ind-modal-body { max-height: 56dvh; overflow-y: auto; }
 }
@@ -848,6 +897,7 @@ body.pwa-standalone #fullscreenBtn { display: inline-flex; }
   <div class="tf-divider"></div>
   <button class="chart-type-btn active" id="typeCandle" title="Kerzen">📊 Kerzen</button>
   <button class="chart-type-btn" id="indBrowserBtn" title="Indikatoren hinzufügen">ƒ Indikatoren</button>
+  <button class="chart-type-btn empty" id="indManageBtn" title="Aktive Indikatoren verwalten">☰ Aktiv<span class="ind-count">0</span></button>
   <button class="chart-type-btn" id="vpToggle" title="Volume Profile">📊 VP</button>
   <button class="chart-type-btn" id="vahValToggle" title="POC / Value Area Linien">🎯 POC/VA</button>
   <button class="chart-type-btn fs-inline-btn" id="chartFullscreenTop" title="Chart Fullscreen">⛶ Fullscreen</button>
@@ -2256,6 +2306,19 @@ init();
   <div class="ind-modal-foot">
     <button class="ind-btn" id="indSettingsCancelBtn">Abbrechen</button>
     <button class="ind-btn primary" id="indSettingsApply">Übernehmen</button>
+  </div>
+</div>
+
+<!-- ══ INDIKATOR-VERWALTUNG (Mobile Bottom-Sheet) ══ -->
+<div class="ind-backdrop" id="indManageBackdrop"></div>
+<div class="ind-modal" id="indManageModal">
+  <div class="ind-modal-head">
+    <div class="ind-modal-title">Aktive Indikatoren</div>
+    <button class="ind-modal-close" id="indManageClose">✕</button>
+  </div>
+  <div class="ind-manage-list" id="indManageList"></div>
+  <div class="ind-modal-foot">
+    <button class="ind-btn primary" id="indManageAdd">+ Indikator hinzufügen</button>
   </div>
 </div>
 

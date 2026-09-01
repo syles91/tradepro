@@ -176,6 +176,15 @@
         else if (act === 'settings') openSettings(inst);
       };
     });
+    // Touch: die Inline-Buttons sind per CSS ausgeblendet — ein Tap auf die
+    // Zeile öffnet stattdessen das Verwaltungs-Sheet.
+    el.querySelectorAll('.ind-legend-row').forEach(row => {
+      row.onclick = e => {
+        if (!isTouchLayout()) return;
+        e.stopPropagation();
+        openManage();
+      };
+    });
   }
 
   function renderLegends() {
@@ -185,6 +194,74 @@
     instances.forEach(inst => {
       if (inst.legendEl) { inst.legendEl.innerHTML = legendRow(inst); bindLegend(inst.legendEl); }
     });
+    renderManage();
+    updateManageBtn();
+  }
+
+  // ── Verwaltungs-Sheet (primäre Bedienung auf Touch) ───────────────────────
+  /** Touch-/Schmal-Layout: dieselben Breakpoints wie im CSS
+   *  (max-width 820px sowie Handy-Querformat). */
+  function isTouchLayout() {
+    return window.matchMedia(
+      '(max-width: 820px), (orientation: landscape) and (max-height: 520px) and (max-width: 920px)'
+    ).matches;
+  }
+
+  function updateManageBtn() {
+    const btn = document.getElementById('indManageBtn');
+    if (!btn) return;
+    const n = instances.length;
+    btn.classList.toggle('empty', n === 0);
+    const badge = btn.querySelector('.ind-count');
+    if (badge) badge.textContent = String(n);
+  }
+
+  function manageRow(inst) {
+    const def = Reg.get(inst.defId) || {};
+    const sub = def.legend ? def.legend(inst.inputs) : (def.short || '');
+    const tag = def.pane === 'separate' ? 'Pane' : 'Overlay';
+    return '<div class="ind-manage-row' + (inst.visible ? '' : ' off') + '" data-inst="' + inst.id + '">' +
+      '<div class="ind-manage-main">' +
+        '<div class="ind-manage-name">' + (def.name || def.short || inst.defId) + '</div>' +
+        '<div class="ind-manage-sub">' + sub + ' · ' + tag + '</div>' +
+      '</div>' +
+      '<div class="ind-manage-acts">' +
+        '<button data-act="toggle" aria-label="Ein/Aus">' + (inst.visible ? '👁' : '🚫') + '</button>' +
+        '<button data-act="settings" aria-label="Einstellungen">⚙</button>' +
+        '<button data-act="remove" aria-label="Entfernen">✕</button>' +
+      '</div></div>';
+  }
+
+  function renderManage() {
+    const el = document.getElementById('indManageList');
+    if (!el) return;
+    if (!instances.length) {
+      el.innerHTML = '<div class="ind-manage-empty">Noch keine Indikatoren aktiv.</div>';
+      return;
+    }
+    el.innerHTML = instances.map(manageRow).join('');
+    el.querySelectorAll('.ind-manage-acts button').forEach(btn => {
+      btn.onclick = e => {
+        e.stopPropagation();
+        const id = +btn.closest('.ind-manage-row').dataset.inst;
+        const inst = instances.find(i => i.id === id);
+        if (!inst) return;
+        const act = btn.dataset.act;
+        if (act === 'remove') removeInstance(id);
+        else if (act === 'toggle') { inst.visible = !inst.visible; save(); renderInstance(inst); }
+        else if (act === 'settings') { closeManage(); openSettings(inst); }
+      };
+    });
+  }
+
+  function openManage() {
+    renderManage(); updateManageBtn();
+    document.getElementById('indManageBackdrop').style.display = 'block';
+    document.getElementById('indManageModal').style.display = 'flex';
+  }
+  function closeManage() {
+    document.getElementById('indManageBackdrop').style.display = 'none';
+    document.getElementById('indManageModal').style.display = 'none';
   }
 
   // ── Einstellungs-Dialog ───────────────────────────────────────────────────
@@ -340,6 +417,14 @@
     window.addEventListener('orientationchange', () => setTimeout(() => { resizeAll(); renderLegends(); }, 250));
 
     document.getElementById('indBrowserBtn').onclick = openBrowser;
+    const manageBtn = document.getElementById('indManageBtn');
+    if (manageBtn) manageBtn.onclick = openManage;
+    const manageBackdrop = document.getElementById('indManageBackdrop');
+    if (manageBackdrop) manageBackdrop.onclick = closeManage;
+    const manageClose = document.getElementById('indManageClose');
+    if (manageClose) manageClose.onclick = closeManage;
+    const manageAdd = document.getElementById('indManageAdd');
+    if (manageAdd) manageAdd.onclick = () => { closeManage(); openBrowser(); };
     document.getElementById('indBrowserBackdrop').onclick = closeBrowser;
     document.getElementById('indBrowserClose').onclick = closeBrowser;
     document.getElementById('indSearch').addEventListener('input', e => renderBrowser(e.target.value));
@@ -348,7 +433,7 @@
     document.getElementById('indSettingsCancelBtn').onclick = closeSettings;
     document.getElementById('indSettingsApply').onclick = applySettings;
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') { closeBrowser(); closeSettings(); }
+      if (e.key === 'Escape') { closeBrowser(); closeSettings(); closeManage(); }
     });
 
     // gespeicherte Indikatoren wiederherstellen
@@ -362,6 +447,8 @@
       });
     });
     renderAll();
+    renderManage();
+    updateManageBtn();
   }
 
   /** Inputs einer Instanz programmatisch setzen (rendert + persistiert). */
@@ -385,6 +472,7 @@
   global.TradePro = global.TradePro || {};
   global.TradePro.IndicatorPanel = {
     attach, renderAll, resizeAll, addIndicator, removeInstance, updateInputs, setVisible,
+    openManage, closeManage,
     get instances() { return instances; },
   };
 })(window);
