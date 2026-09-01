@@ -586,6 +586,7 @@ hub = Hub()
 # the new package can now grow strategy-by-strategy without bloating server_v2.py.
 from tradepro.api.routes_signals import setup as setup_signal_routes
 from tradepro.api.routes_account import router as account_router
+from tradepro.market.liquidations import liquidation_map, leverage_palette
 app.include_router(setup_signal_routes(hub))
 app.include_router(account_router)
 
@@ -756,6 +757,21 @@ async def api_ls_hist(symbol: str = "BTCUSDT", period: str = "1h",
 @app.get("/api/liquidations")
 async def api_liquidations(symbol: str = "BTCUSDT", exchange: str = "binance"):
     return JSONResponse(list(hub.liqs.get(f"{exchange}:{symbol.upper()}", [])))
+
+
+@app.get("/api/liquidation_map")
+async def api_liquidation_map(symbol: str = "BTCUSDT", exchange: str = "binance",
+                              window: str = "1d", bins: int = 90):
+    """
+    CoinGlass-Style Liquidation Map, berechnet aus kostenlosen Boersendaten
+    (Klines + Taker-Delta + Open Interest). Siehe tradepro/market/liquidations.py.
+    """
+    try:
+        data = await liquidation_map(symbol=symbol, exchange=exchange,
+                                     window=window, bins=bins)
+        return JSONResponse(data)
+    except Exception as e:
+        return JSONResponse({"error": str(e), "levels": []}, status_code=502)
 
 
 @app.get("/api/symbols")

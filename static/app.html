@@ -229,6 +229,46 @@ body {
 
 /* Liquidations feed */
 .liq-feed { flex: 1; overflow-y: auto; }
+
+/* ── Liquidation Map ─────────────────────────────────────────────── */
+#paneLiqMap { overflow-y: auto; }
+.lm-toolbar { display: flex; align-items: center; gap: 6px; padding: 8px 10px;
+  border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.lm-windows { display: flex; gap: 4px; flex: 1; overflow-x: auto; scrollbar-width: none; }
+.lm-windows::-webkit-scrollbar { display: none; }
+.lm-win { background: var(--panel2); border: 1px solid var(--border); color: var(--muted);
+  font-size: 11px; font-weight: 700; padding: 5px 9px; border-radius: 5px; cursor: pointer;
+  white-space: nowrap; min-height: 28px; }
+.lm-win.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+.lm-refresh { background: var(--panel2); border: 1px solid var(--border); color: var(--txt);
+  border-radius: 5px; cursor: pointer; width: 30px; min-height: 28px; font-size: 14px; }
+.lm-refresh:hover { border-color: var(--blue); }
+.lm-legend { display: flex; flex-wrap: wrap; gap: 10px; padding: 8px 10px;
+  font-size: 10px; color: var(--muted); flex-shrink: 0; }
+.lm-legend .lm-dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px;
+  margin-right: 4px; vertical-align: middle; }
+.lm-chart-wrap { position: relative; height: 300px; flex-shrink: 0; padding: 0 4px; }
+.lm-chart-wrap canvas { width: 100%; height: 100%; display: block; }
+.lm-loading { position: absolute; inset: 0; display: flex; align-items: center;
+  justify-content: center; font-size: 11px; color: var(--muted); background: var(--bg2); }
+.lm-loading.hidden { display: none; }
+.lm-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 8px 10px;
+  font-size: 10px; color: var(--muted); border-bottom: 1px solid var(--border); }
+.lm-meta b { color: var(--txt); font-weight: 700; }
+.lm-clusters { padding: 4px 8px 8px; }
+.lm-cluster { display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; padding: 7px 9px; margin-bottom: 5px; border-radius: 6px;
+  background: var(--panel); border-left: 3px solid var(--muted); font-size: 11px; }
+.lm-cluster.up { border-left-color: var(--red); }
+.lm-cluster.down { border-left-color: var(--green); }
+.lm-cluster .lm-c-price { font-weight: 700; color: var(--txt);
+  font-variant-numeric: tabular-nums; }
+.lm-cluster .lm-c-dist { color: var(--muted); font-size: 10px; }
+.lm-cluster .lm-c-usd { font-weight: 700; font-variant-numeric: tabular-nums; }
+.lm-cluster.up .lm-c-usd { color: var(--red-br); }
+.lm-cluster.down .lm-c-usd { color: var(--green-br); }
+.lm-note { padding: 6px 10px 12px; font-size: 9px; color: var(--muted); line-height: 1.45; }
+@media (max-width: 820px) { .lm-chart-wrap { height: 260px; } }
 .liq-row {
   display: flex; align-items: center; justify-content: space-between;
   padding: 7px 14px; font-size: 12px; border-bottom: 1px solid rgba(35,40,56,.4);
@@ -1037,6 +1077,7 @@ body.pwa-standalone #fullscreenBtn { display: inline-flex; }
     <div class="side-tabs">
       <div class="side-tab active" data-tab="futures">Futures</div>
       <div class="side-tab" data-tab="orderbook">Orderbook</div>
+      <div class="side-tab" data-tab="liqmap">Liq-Map</div>
       <div class="side-tab" data-tab="signals">Signale</div>
       <div class="side-tab" data-tab="strategies">Strategien</div>
       <div class="side-tab" data-tab="stats">Statistik</div>
@@ -1097,6 +1138,29 @@ body.pwa-standalone #fullscreenBtn { display: inline-flex; }
       <div class="ob-list" id="obBids"></div>
       <div class="panel-head">Depth Chart</div>
       <div class="depth-wrap"><canvas id="depthCanvas"></canvas></div>
+    </div>
+
+    <!-- TAB: Liquidation Map -->
+    <div class="side-pane" id="paneLiqMap" style="display:none">
+      <div class="lm-toolbar">
+        <div class="lm-windows" id="lmWindows">
+          <button class="lm-win" data-win="12h">12h</button>
+          <button class="lm-win active" data-win="1d">1 Tag</button>
+          <button class="lm-win" data-win="3d">3 Tage</button>
+          <button class="lm-win" data-win="1w">1 Woche</button>
+          <button class="lm-win" data-win="1m">1 Monat</button>
+        </div>
+        <button class="lm-refresh" id="lmRefresh" title="Neu laden">⟳</button>
+      </div>
+      <div class="lm-legend" id="lmLegend"></div>
+      <div class="lm-chart-wrap"><canvas id="lmCanvas"></canvas>
+        <div class="lm-loading" id="lmLoading">Lade Liquidation Map…</div>
+      </div>
+      <div class="lm-meta" id="lmMeta"></div>
+      <div class="panel-head">🎯 Stärkste Liquidations-Cluster</div>
+      <div class="lm-clusters" id="lmClusters"></div>
+      <div class="lm-note">Modell-Rekonstruktion aus öffentlichen Futures-Daten
+        (Klines, Taker-Delta, Open Interest) – keine Börsen-Innenansicht.</div>
     </div>
 
     <!-- TAB: Signals -->
@@ -2233,6 +2297,13 @@ function reloadAll() {
   loadLiquidations();
   if (obActive) loadOrderbook();
   if (State.showVP || State.showVA) loadVolumeProfile();
+  // Liq-Map ist symbol-/exchange-gebunden -> Cache verwerfen, nur bei
+  // sichtbarem Tab sofort neu laden (sonst lazy beim Tab-Wechsel).
+  if (typeof LM !== 'undefined') {
+    LM.data = null;
+    const lmPane = document.getElementById('paneLiqMap');
+    if (lmPane && lmPane.style.display !== 'none') loadLiquidationMap();
+  }
   loadSignals();
   const hint = State.exchange === 'binance'
     ? 'Binance Futures-WS hier geblockt –<br><span style="font-size:10px">wechsle zu Bybit für Live-Liquidationen</span>'
@@ -2304,16 +2375,209 @@ setInterval(() => { if (State.showVP) drawVolumeProfile(); }, 600);
 
 // Sidebar-Tabs (Futures / Orderbook)
 let obActive = false;
+// ════════════════════════════════════════════════════════════════════════════
+//  LIQUIDATION MAP (CoinGlass-Style, aus freien Boersendaten)
+// ════════════════════════════════════════════════════════════════════════════
+// Bewusst `var`: reloadAll() kann waehrend des Boots laufen, bevor diese
+// Zeile ausgefuehrt ist. Mit const/let waere der typeof-Guard dort ein
+// TDZ-ReferenceError; `var` hoistet sauber auf undefined.
+var LM = { window: '1d', data: null, loading: false, hover: null };
+
+function lmFmtUsd(v) {
+  const a = Math.abs(v);
+  if (a >= 1e9) return (v / 1e9).toFixed(2) + 'B';
+  if (a >= 1e6) return (v / 1e6).toFixed(1) + 'M';
+  if (a >= 1e3) return (v / 1e3).toFixed(1) + 'K';
+  return v.toFixed(0);
+}
+function lmFmtPrice(p) {
+  return p >= 1000 ? p.toLocaleString('de-DE', { maximumFractionDigits: 0 })
+                   : p.toPrecision(5);
+}
+
+async function loadLiquidationMap() {
+  if (LM.loading) return;
+  LM.loading = true;
+  const ld = document.getElementById('lmLoading');
+  if (ld) { ld.textContent = 'Lade Liquidation Map…'; ld.classList.remove('hidden'); }
+  try {
+    const res = await fetch(`/api/liquidation_map?symbol=${State.symbol}` +
+      `&exchange=${State.exchange}&window=${LM.window}&bins=90`);
+    const d = await res.json();
+    LM.data = (d && d.levels && d.levels.length) ? d : null;
+    if (!LM.data && ld) ld.textContent = d && d.error ? ('Fehler: ' + d.error)
+                                                      : 'Keine Daten verfügbar.';
+  } catch (e) {
+    LM.data = null;
+    if (ld) ld.textContent = 'Netzwerkfehler beim Laden.';
+  }
+  LM.loading = false;
+  if (LM.data && ld) ld.classList.add('hidden');
+  renderLiqMap();
+}
+
+function renderLiqMapLegend() {
+  const el = document.getElementById('lmLegend');
+  if (!el) return;
+  const tiers = (LM.data && LM.data.tiers) || [];
+  el.innerHTML = tiers.map(t =>
+    `<span><span class="lm-dot" style="background:${t.color}"></span>` +
+    `${t.leverage}x <b style="color:var(--txt)">${lmFmtUsd(t.usd)}</b></span>`
+  ).join('');
+}
+
+function renderLiqMapMeta() {
+  const el = document.getElementById('lmMeta');
+  if (!el) return;
+  const d = LM.data;
+  if (!d) { el.innerHTML = ''; return; }
+  el.innerHTML =
+    `<span>Preis <b>${lmFmtPrice(d.price)}</b></span>` +
+    `<span>Open Interest <b>${lmFmtUsd(d.oiUsd)}</b></span>` +
+    `<span>Kartiert <b>${lmFmtUsd(d.totalUsd)}</b></span>` +
+    `<span>Range <b>${lmFmtPrice(d.low)} – ${lmFmtPrice(d.high)}</b></span>`;
+}
+
+function renderLiqMapClusters() {
+  const el = document.getElementById('lmClusters');
+  if (!el) return;
+  const d = LM.data;
+  if (!d) { el.innerHTML = '<div class="liq-empty">Keine Cluster.</div>'; return; }
+  const rows = [...(d.clustersAbove || []), ...(d.clustersBelow || [])]
+    .sort((a, b) => b.usd - a.usd);
+  if (!rows.length) { el.innerHTML = '<div class="liq-empty">Keine Cluster.</div>'; return; }
+  el.innerHTML = rows.map(c => {
+    const up = c.distPct >= 0;
+    const label = up ? 'Shorts liquidiert' : 'Longs liquidiert';
+    return `<div class="lm-cluster ${up ? 'up' : 'down'}">
+      <div><div class="lm-c-price">${lmFmtPrice(c.price)}</div>
+      <div class="lm-c-dist">${c.distPct >= 0 ? '+' : ''}${c.distPct.toFixed(2)}% · ${label}</div></div>
+      <div class="lm-c-usd">${lmFmtUsd(c.usd)}</div></div>`;
+  }).join('');
+}
+
+function drawLiqMap() {
+  const cv = document.getElementById('lmCanvas');
+  if (!cv || !cv.parentElement) return;
+  const d = LM.data;
+  const W = cv.parentElement.clientWidth;
+  const H = cv.parentElement.clientHeight;
+  if (!W || !H) return;
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = W * dpr; cv.height = H * dpr;
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  if (!d || !d.levels.length) return;
+
+  const padL = 6, padR = 6, padT = 26, padB = 22;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const lo = d.low, hi = d.high, span = (hi - lo) || 1;
+  const xOf = p => padL + ((p - lo) / span) * plotW;
+  const maxTotal = d.maxTotal || 1;
+  const barW = Math.max(1.5, plotW / d.levels.length - 0.6);
+
+  // Hintergrund: Longs-Zone (links, rot) / Shorts-Zone (rechts, gruen)
+  const xPrice = xOf(d.price);
+  ctx.fillStyle = 'rgba(239,83,80,.05)';
+  ctx.fillRect(padL, padT, Math.max(0, xPrice - padL), plotH);
+  ctx.fillStyle = 'rgba(38,166,154,.05)';
+  ctx.fillRect(xPrice, padT, Math.max(0, padL + plotW - xPrice), plotH);
+
+  // Gitternetz
+  ctx.strokeStyle = 'rgba(120,123,134,.12)';
+  ctx.lineWidth = 1;
+  for (let i = 1; i < 4; i++) {
+    const y = padT + (plotH * i) / 4;
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL + plotW, y); ctx.stroke();
+  }
+
+  // Gestapelte Balken pro Leverage-Tier
+  const colors = {};
+  (d.tiers || []).forEach(t => { colors[String(t.leverage)] = t.color; });
+  d.levels.forEach(l => {
+    const x = xOf(l.price) - barW / 2;
+    let yBase = padT + plotH;
+    const keys = Object.keys(l.byLeverage).sort((a, b) => Number(b) - Number(a));
+    keys.forEach(k => {
+      const h = (l.byLeverage[k] / maxTotal) * plotH;
+      if (h <= 0) return;
+      ctx.fillStyle = colors[k] || '#5b8def';
+      ctx.fillRect(x, yBase - h, barW, h);
+      yBase -= h;
+    });
+  });
+
+  // Kumulative Kurven: links rot (abwaerts), rechts gruen (aufwaerts)
+  const maxCum = Math.max(...d.levels.map(l => l.cumulative || 0)) || 1;
+  const drawCurve = (pool, color) => {
+    if (pool.length < 2) return;
+    ctx.beginPath();
+    pool.forEach((l, i) => {
+      const x = xOf(l.price);
+      const y = padT + plotH - ((l.cumulative || 0) / maxCum) * plotH;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = color; ctx.lineWidth = 1.6; ctx.stroke();
+  };
+  drawCurve(d.levels.filter(l => l.price < d.price), '#f0616a');
+  drawCurve(d.levels.filter(l => l.price >= d.price), '#2ebd9e');
+
+  // Aktueller Preis als gestrichelte Linie
+  ctx.save();
+  ctx.setLineDash([4, 4]);
+  ctx.strokeStyle = '#ef5350'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(xPrice, padT - 4); ctx.lineTo(xPrice, padT + plotH); ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle = '#d1d4dc';
+  ctx.font = '600 10px system-ui, sans-serif';
+  ctx.textAlign = xPrice > W * 0.7 ? 'right' : 'left';
+  ctx.fillText('Preis ' + lmFmtPrice(d.price),
+               xPrice + (xPrice > W * 0.7 ? -5 : 5), padT - 12);
+
+  // Preis-Achse
+  ctx.fillStyle = '#787b86';
+  ctx.font = '9px system-ui, sans-serif';
+  for (let i = 0; i <= 4; i++) {
+    const p = lo + (span * i) / 4;
+    const x = xOf(p);
+    ctx.textAlign = i === 0 ? 'left' : i === 4 ? 'right' : 'center';
+    ctx.fillText(lmFmtPrice(p), x, H - 7);
+  }
+  // Y-Achse (USD)
+  ctx.textAlign = 'left';
+  ctx.fillText(lmFmtUsd(maxTotal), padL + 2, padT + 9);
+}
+
+function renderLiqMap() {
+  renderLiqMapLegend();
+  renderLiqMapMeta();
+  renderLiqMapClusters();
+  drawLiqMap();
+}
+
+document.querySelectorAll('.lm-win').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.lm-win').forEach(x => x.classList.toggle('active', x === b));
+  LM.window = b.dataset.win;
+  loadLiquidationMap();
+});
+const lmRefreshBtn = document.getElementById('lmRefresh');
+if (lmRefreshBtn) lmRefreshBtn.onclick = () => loadLiquidationMap();
+window.addEventListener('resize', () => { if (LM.data) drawLiqMap(); });
+
 document.querySelectorAll('.side-tab').forEach(t => t.onclick = () => {
   const tab = t.dataset.tab;
   document.querySelectorAll('.side-tab').forEach(x => x.classList.toggle('active', x === t));
   document.getElementById('paneFutures').style.display = tab === 'futures' ? 'flex' : 'none';
   document.getElementById('paneOrderbook').style.display = tab === 'orderbook' ? 'flex' : 'none';
+  document.getElementById('paneLiqMap').style.display = tab === 'liqmap' ? 'flex' : 'none';
   document.getElementById('paneSignals').style.display = tab === 'signals' ? 'flex' : 'none';
   document.getElementById('paneStrategies').style.display = tab === 'strategies' ? 'flex' : 'none';
   document.getElementById('paneStats').style.display = tab === 'stats' ? 'flex' : 'none';
   obActive = tab === 'orderbook';
   if (obActive) { loadOrderbook(); setTimeout(drawDepthChart, 60); }
+  if (tab === 'liqmap') { LM.data ? setTimeout(renderLiqMap, 60) : loadLiquidationMap(); }
   if (tab === 'signals') { loadSignals(); loadOpenSignals(true); }
   if (tab === 'strategies') loadStrategies();
   if (tab === 'stats') loadAnalytics();
