@@ -941,6 +941,9 @@ button, .wl-item, .side-tab, .subchart-tab, .symbol-box { touch-action: manipula
 
   /* Guide ist auf dem Handy sekundaer — Platz fuer die Trigger. */
   .topbar-right > a[href="/guide"] { display: none; }
+  /* Mobil fuehrt die untere Navigation zu /trading und /daten — die
+     Topbar-Verknuepfungen waeren dort doppelt. */
+  .topbar-right > .nav-page { display: none; }
 
   /* ── Inhalte der Sheets ── */
   .m-tools-host, .m-tf-host {
@@ -1125,6 +1128,10 @@ body.pwa-standalone #fullscreenBtn { display: inline-flex; }
          Per CSS nur unterhalb des Mobile-Breakpoints sichtbar. -->
     <button class="m-trigger" id="mToolsBtn" title="Chart-Werkzeuge">🛠<span class="m-trigger-caret">▾</span></button>
     <div class="conn-dot" id="connDot" title="Verbindung"></div>
+    <!-- Einstiege in die eigenstaendigen Seiten. Auf Mobile fuehrt die
+         untere Navigation dorthin, darum hier nur ab Tablet-Breite. -->
+    <a href="/trading" class="icon-btn nav-page" id="navTrading" title="Trading-Dashboard" style="text-decoration:none">🎯</a>
+    <a href="/daten" class="icon-btn nav-page" id="navDaten" title="Daten-Terminal" style="text-decoration:none">⚡</a>
     <button class="dash-btn" id="signalRefreshTop" title="Signal Engine ausführen">⚡ Signale</button>
     <button class="icon-btn" id="settingsBtn" title="Einstellungen & Demo-Konto">⚙</button>
     <button class="icon-btn ai-trigger" id="aiTrigger" title="KI-Assistent">🤖</button>
@@ -1400,8 +1407,8 @@ body.pwa-standalone #fullscreenBtn { display: inline-flex; }
 <div class="mobile-nav">
   <button class="mnav-btn" id="mnWatch"><span class="mnav-icon">📋</span>Märkte</button>
   <button class="mnav-btn active" id="mnChart"><span class="mnav-icon">📈</span>Chart</button>
-  <button class="mnav-btn" id="mnData"><span class="mnav-icon">⚡</span>Daten</button>
-  <button class="mnav-btn" id="mnSignals"><span class="mnav-icon">🎯</span>Signale</button>
+  <a class="mnav-btn" href="/daten"><span class="mnav-icon">⚡</span>Daten</a>
+  <a class="mnav-btn" href="/trading"><span class="mnav-icon">🎯</span>Trading</a>
   <button class="mnav-btn" id="mnAI"><span class="mnav-icon">🤖</span>KI</button>
 </div>
 <div class="mobile-backdrop" id="backdrop"></div>
@@ -3197,20 +3204,17 @@ function showMobilePanel(which) {
   const bd = document.getElementById('backdrop');
   wl.classList.remove('mobile-show'); sb.classList.remove('mobile-show'); bd.classList.remove('show');
   document.querySelectorAll('.mnav-btn').forEach(b => b.classList.remove('active'));
+  // 'data' und 'signals' sind keine Panels mehr: sie liegen als eigene
+  // Seiten unter /daten und /trading und haengen als Links in der Nav.
+  // Die Sidebar bleibt fuer den Desktop erhalten.
   if (which === 'watch') {
     wl.classList.add('mobile-show'); bd.classList.add('show'); document.getElementById('mnWatch').classList.add('active');
-  } else if (which === 'data') {
-    sb.classList.add('mobile-show'); bd.classList.add('show'); document.getElementById('mnData').classList.add('active'); activateSideTab('futures');
-  } else if (which === 'signals') {
-    sb.classList.add('mobile-show'); bd.classList.add('show'); document.getElementById('mnSignals').classList.add('active'); activateSideTab('signals');
   } else {
     document.getElementById('mnChart').classList.add('active'); setTimeout(resizeCharts, 50);
   }
 }
 document.getElementById('mnWatch').onclick = () => showMobilePanel('watch');
 document.getElementById('mnChart').onclick = () => showMobilePanel('chart');
-document.getElementById('mnData').onclick = () => showMobilePanel('data');
-document.getElementById('mnSignals').onclick = () => showMobilePanel('signals');
 document.getElementById('mnAI').onclick = () => aiOpen();
 document.getElementById('backdrop').onclick = () => showMobilePanel('chart');
 

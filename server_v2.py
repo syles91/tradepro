@@ -1031,6 +1031,26 @@ async def index():
     )
 
 
+@app.get("/trading", response_class=HTMLResponse)
+async def trading():
+    """Trading-Dashboard: Strategie-Signale, Paper-Trades und Einstellungen."""
+    return HTMLResponse(
+        (STATIC_DIR / "trading.html").read_text(),
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate",
+                 "Pragma": "no-cache", "Expires": "0"},
+    )
+
+
+@app.get("/daten", response_class=HTMLResponse)
+async def daten():
+    """Daten-Terminal: Futures-Kennzahlen, Orderbook und Liquidation-Map."""
+    return HTMLResponse(
+        (STATIC_DIR / "daten.html").read_text(),
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate",
+                 "Pragma": "no-cache", "Expires": "0"},
+    )
+
+
 @app.get("/classic", response_class=HTMLResponse)
 async def classic():
     return HTMLResponse((STATIC_DIR / "classic.html").read_text())

@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#0b0e11">
+<title>TradePro · Daten</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="/static/terminal.css?v=1">
+<style>
+/* Orderbuch: zwei Spalten mit Tiefenbalken hinter den Zeilen. */
+.ob { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); }
+.ob-col { background: var(--panel); }
+.ob-head {
+  display: flex; justify-content: space-between; padding: 7px 11px;
+  font-size: 10px; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .4px; background: var(--bg2);
+}
+.ob-row {
+  position: relative; display: flex; justify-content: space-between;
+  padding: 4px 11px; font-size: 11.5px; font-variant-numeric: tabular-nums;
+}
+.ob-row i { position: absolute; top: 0; bottom: 0; opacity: .16; }
+.ob-row.bid i { right: 0; background: var(--green); }
+.ob-row.ask i { left: 0; background: var(--red); }
+.ob-row span { position: relative; z-index: 1; }
+.ob-row.bid .p { color: var(--green-br); }
+.ob-row.ask .p { color: var(--red-br); }
+
+/* Ungleichgewicht */
+.imb-bar { height: 8px; border-radius: 4px; overflow: hidden; display: flex; background: var(--panel2); }
+.imb-bar b { display: block; height: 100%; }
+.imb-bar .b { background: var(--green); }
+.imb-bar .a { background: var(--red); }
+.imb-legend { display: flex; justify-content: space-between; font-size: 11px; margin-top: 6px; font-variant-numeric: tabular-nums; }
+
+canvas { display: block; width: 100%; }
+.lm-wrap { padding: 11px 13px; }
+.cluster { display: flex; align-items: center; gap: 8px; padding: 8px 13px; border-bottom: 1px solid var(--border); font-size: 12px; font-variant-numeric: tabular-nums; }
+.cluster:last-child { border-bottom: none; }
+.cluster .dist { margin-left: auto; font-weight: 700; }
+.spark { height: 46px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">Trade<span>Pro</span></div>
+  <div class="page-title">Daten</div>
+  <div class="topbar-right">
+    <select class="tp-select" id="symbol"></select>
+    <select class="tp-select" id="exchange">
+      <option value="binance">Binance</option>
+      <option value="bybit">Bybit</option>
+    </select>
+    <span class="conn-dot" id="dot"></span>
+    <a class="icon-btn" href="/" title="Zum Chart">📈</a>
+  </div>
+</div>
+
+<div class="page">
+  <!-- ══ FUTURES-KENNZAHLEN ═══════════════════════════════════════════════ -->
+  <div class="grid cols-4 keep-2" style="margin-bottom:12px">
+    <div class="card"><div class="metric">
+      <div class="metric-label">Preis</div>
+      <div class="metric-value" id="mPrice">–</div>
+      <div class="metric-sub" id="mChange">–</div></div></div>
+    <div class="card"><div class="metric">
+      <div class="metric-label">Open Interest</div>
+      <div class="metric-value" id="mOi">–</div>
+      <div class="metric-sub" id="mOiUsd">–</div></div></div>
+    <div class="card"><div class="metric">
+      <div class="metric-label">Funding</div>
+      <div class="metric-value" id="mFunding">–</div>
+      <div class="metric-sub" id="mFundNext">–</div></div></div>
+    <div class="card"><div class="metric">
+      <div class="metric-label">Long/Short</div>
+      <div class="metric-value" id="mLs">–</div>
+      <div class="metric-sub" id="mLsTop">–</div></div></div>
+  </div>
+
+  <div class="grid cols-3" style="margin-bottom:12px">
+    <div class="card">
+      <div class="card-head">Open Interest <span class="sub">Verlauf</span></div>
+      <div class="card-body"><canvas class="spark" id="cOi"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-head">Funding Rate <span class="sub">Verlauf</span></div>
+      <div class="card-body"><canvas class="spark" id="cFund"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-head">Long-Anteil <span class="sub">global</span></div>
+      <div class="card-body"><canvas class="spark" id="cLs"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ══ ORDERBOOK + LIQ-MAP NEBENEINANDER ════════════════════════════════ -->
+  <div class="grid cols-2">
+    <div class="card">
+      <div class="card-head">Orderbook <span class="sub" id="obSpread"></span></div>
+      <div class="card-body" style="padding-bottom:9px">
+        <div class="imb-bar" id="imbBar"><b class="b"></b><b class="a"></b></div>
+        <div class="imb-legend">
+          <span class="up" id="imbBid">–</span>
+          <span id="imbTxt">Ungleichgewicht</span>
+          <span class="down" id="imbAsk">–</span>
+        </div>
+      </div>
+      <div class="ob">
+        <div class="ob-col">
+          <div class="ob-head"><span>Preis</span><span>Menge</span></div>
+          <div id="bids"><div class="empty">Lade…</div></div>
+        </div>
+        <div class="ob-col">
+          <div class="ob-head"><span>Preis</span><span>Menge</span></div>
+          <div id="asks"><div class="empty">Lade…</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">Liquidation-Map
+        <span class="sub" id="lmMeta"></span></div>
+      <div class="lm-wrap"><canvas id="cLm" height="300"></canvas></div>
+      <div class="card-head" style="border-top:1px solid var(--border)">Nächste Cluster</div>
+      <div id="clusters"><div class="empty">Lade…</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<nav class="mobile-nav">
+  <a class="mnav-btn" href="/"><span class="mnav-icon">📈</span>Chart</a>
+  <a class="mnav-btn active" href="/daten"><span class="mnav-icon">⚡</span>Daten</a>
+  <a class="mnav-btn" href="/trading"><span class="mnav-icon">🎯</span>Trading</a>
+</nav>
+
+<script>
+'use strict';
+// ════════════════════════════════════════════════════════════════════════════
+//  DATEN-TERMINAL
+//  Futures-Kennzahlen, Orderbook und Liquidation-Map fuer ein Symbol.
+//  Alles kommt aus den bestehenden Endpunkten; hier wird nur dargestellt.
+// ════════════════════════════════════════════════════════════════════════════
+var $ = function (id) { return document.getElementById(id); };
+var State = { symbol: 'BTCUSDT', exchange: 'binance' };
+
+function num(v, dec) {
+  if (v === null || v === undefined || isNaN(v)) return '–';
+  return Number(v).toLocaleString('de-DE',
+    { minimumFractionDigits: dec === undefined ? 2 : dec,
+      maximumFractionDigits: dec === undefined ? 2 : dec });
+}
+function compact(v) {
+  if (v === null || v === undefined || isNaN(v)) return '–';
+  var a = Math.abs(v);
+  if (a >= 1e9) return num(v / 1e9, 2) + 'B';
+  if (a >= 1e6) return num(v / 1e6, 2) + 'M';
+  if (a >= 1e3) return num(v / 1e3, 1) + 'K';
+  return num(v, 2);
+}
+function esc(s) {
+  return String(s === null || s === undefined ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function css(n) { return getComputedStyle(document.body).getPropertyValue(n).trim(); }
+
+var toastTimer = null;
+function toast(msg, kind) {
+  var t = $('toast');
+  t.textContent = msg; t.className = 'toast show ' + (kind || '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () { t.className = 'toast'; }, 2600);
+}
+
+function api(path) {
+  return fetch(path, { credentials: 'same-origin' }).then(function (r) {
+    if (r.status === 401) { location.href = '/login'; throw new Error('auth'); }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  });
+}
+function q(path) {
+  return path + (path.indexOf('?') >= 0 ? '&' : '?') +
+    'symbol=' + encodeURIComponent(State.symbol) +
+    '&exchange=' + encodeURIComponent(State.exchange);
+}
+
+// ── Sparkline auf einem Canvas ─────────────────────────────────────────────
+// Zeichnet in Geraetepixeln, sonst ist die Linie auf dem Handy unscharf.
+function spark(canvas, values, color) {
+  var dpr = window.devicePixelRatio || 1;
+  var w = canvas.clientWidth, h = canvas.clientHeight || 46;
+  canvas.width = w * dpr; canvas.height = h * dpr;
+  var x = canvas.getContext('2d');
+  x.setTransform(dpr, 0, 0, dpr, 0, 0);
+  x.clearRect(0, 0, w, h);
+  if (!values || values.length < 2) {
+    x.fillStyle = css('--muted'); x.font = '11px system-ui';
+    x.fillText('keine Daten', 4, h / 2 + 4);
+    return;
+  }
+  var min = Math.min.apply(null, values), max = Math.max.apply(null, values);
+  var span = (max - min) || 1;
+  var px = function (i) { return (i / (values.length - 1)) * (w - 2) + 1; };
+  var py = function (v) { return h - 3 - ((v - min) / span) * (h - 6); };
+
+  // Flaeche unter der Linie andeuten
+  x.beginPath();
+  x.moveTo(px(0), h);
+  values.forEach(function (v, i) { x.lineTo(px(i), py(v)); });
+  x.lineTo(px(values.length - 1), h);
+  x.closePath();
+  x.fillStyle = color + '22';
+  x.fill();
+
+  x.beginPath();
+  values.forEach(function (v, i) { i ? x.lineTo(px(i), py(v)) : x.moveTo(px(i), py(v)); });
+  x.strokeStyle = color; x.lineWidth = 1.5; x.stroke();
+}
+
+// ── Kennzahlen ─────────────────────────────────────────────────────────────
+function loadTicker() {
+  api(q('/api/ticker')).then(function (t) {
+    $('mPrice').textContent = num(t.price, 1);
+    var ch = Number(t.change);
+    $('mChange').textContent = (ch > 0 ? '+' : '') + num(ch, 2) + '% · 24h';
+    $('mChange').className = 'metric-sub ' + (ch > 0 ? 'up' : ch < 0 ? 'down' : 'flat');
+    $('mOi').textContent = compact(t.oi);
+    $('mOiUsd').textContent = t.oi && t.price ? compact(t.oi * t.price) + ' USDT' : '–';
+    var f = Number(t.funding);
+    $('mFunding').textContent = num(f, 4) + '%';
+    $('mFunding').className = 'metric-value ' + (f > 0 ? 'up' : f < 0 ? 'down' : 'flat');
+    if (t.nextFundingTime) {
+      var d = new Date(t.nextFundingTime);
+      $('mFundNext').textContent = 'nächste ' +
+        d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    }
+    $('dot').classList.add('live');
+  }).catch(function () { $('dot').classList.remove('live'); });
+}
+
+function loadHistories() {
+  api(q('/api/oi_hist')).then(function (a) {
+    spark($('cOi'), (a || []).map(function (p) { return p.value; }), css('--blue-lt'));
+  }).catch(function () { spark($('cOi'), null); });
+
+  api(q('/api/funding_hist')).then(function (a) {
+    spark($('cFund'), (a || []).map(function (p) { return p.value; }), css('--orange'));
+  }).catch(function () { spark($('cFund'), null); });
+
+  api(q('/api/ls_hist')).then(function (a) {
+    var g = (a && a.global) || [], top = (a && a.top) || [];
+    spark($('cLs'), g.map(function (p) { return p.long; }), css('--purple'));
+    if (g.length) {
+      var last = g[g.length - 1];
+      $('mLs').textContent = num(last.long, 1) + '%';
+      $('mLs').className = 'metric-value ' + (last.long > 50 ? 'up' : 'down');
+    }
+    if (top.length) {
+      $('mLsTop').textContent = 'Top-Konten ' + num(top[top.length - 1].long, 1) + '%';
+    }
+  }).catch(function () { spark($('cLs'), null); });
+}
+
+// ── Orderbook ──────────────────────────────────────────────────────────────
+function loadOrderbook() {
+  api(q('/api/orderbook')).then(function (o) {
+    var bids = (o.bids || []).slice(0, 18), asks = (o.asks || []).slice(0, 18);
+    var maxQty = 0;
+    bids.concat(asks).forEach(function (r) { if (r[1] > maxQty) maxQty = r[1]; });
+    maxQty = maxQty || 1;
+
+    function rows(list, kind) {
+      if (!list.length) return '<div class="empty">–</div>';
+      return list.map(function (r) {
+        var w = Math.max(2, (r[1] / maxQty) * 100);
+        return '<div class="ob-row ' + kind + '">' +
+          '<i style="width:' + w + '%"></i>' +
+          '<span class="p">' + num(r[0], 1) + '</span>' +
+          '<span>' + num(r[1], 3) + '</span></div>';
+      }).join('');
+    }
+    $('bids').innerHTML = rows(bids, 'bid');
+    $('asks').innerHTML = rows(asks, 'ask');
+
+    if (bids.length && asks.length) {
+      var spread = asks[0][0] - bids[0][0];
+      $('obSpread').textContent = 'Spanne ' + num(spread, 2) +
+        ' (' + num((spread / bids[0][0]) * 100, 3) + '%)';
+    }
+
+    // Ungleichgewicht: bidSum/askSum kommen fertig vom Server.
+    var bs = Number(o.bidSum) || 0, as = Number(o.askSum) || 0, tot = bs + as;
+    var bp = tot ? (bs / tot) * 100 : 50;
+    $('imbBar').querySelector('.b').style.width = bp + '%';
+    $('imbBar').querySelector('.a').style.width = (100 - bp) + '%';
+    $('imbBid').textContent = num(bs, 2) + ' Bid';
+    $('imbAsk').textContent = num(as, 2) + ' Ask';
+    var im = Number(o.imbalance);
+    $('imbTxt').textContent = (im > 0 ? 'Käufer' : im < 0 ? 'Verkäufer' : 'neutral') +
+      ' ' + num(Math.abs(im) * 100, 1) + '%';
+    $('imbTxt').className = im > 0 ? 'up' : im < 0 ? 'down' : 'flat';
+  }).catch(function () {
+    $('bids').innerHTML = '<div class="empty">nicht erreichbar</div>';
+    $('asks').innerHTML = '<div class="empty">nicht erreichbar</div>';
+  });
+}
+
+// ── Liquidation-Map ────────────────────────────────────────────────────────
+// Horizontale Balken je Preis-Bin, eingefaerbt nach Seite. Der aktuelle
+// Preis liegt als Linie darin, damit man Abstand und Richtung sofort sieht.
+function drawLiqMap(m) {
+  var c = $('cLm');
+  var dpr = window.devicePixelRatio || 1;
+  var w = c.clientWidth, h = 300;
+  c.width = w * dpr; c.height = h * dpr;
+  var x = c.getContext('2d');
+  x.setTransform(dpr, 0, 0, dpr, 0, 0);
+  x.clearRect(0, 0, w, h);
+
+  var levels = m.levels || [];
+  if (!levels.length) {
+    x.fillStyle = css('--muted'); x.font = '12px system-ui';
+    x.fillText('keine Daten', 10, h / 2);
+    return;
+  }
+  var lo = m.low, hi = m.high, span = (hi - lo) || 1;
+  var maxUsd = m.maxTotal || 1;
+  var yOf = function (p) { return h - ((p - lo) / span) * h; };
+  var labelW = 62;
+
+  levels.forEach(function (l) {
+    var y = yOf(l.price);
+    var bw = Math.max(1, (l.total / maxUsd) * (w - labelW - 6));
+    x.fillStyle = l.side === 'long' ? 'rgba(46,189,158,.62)' : 'rgba(240,97,106,.62)';
+    x.fillRect(labelW, y - 1.6, bw, 3.2);
+  });
+
+  // Preisachse
+  x.fillStyle = css('--muted');
+  x.font = '10px system-ui';
+  for (var i = 0; i <= 4; i++) {
+    var p = lo + (span * i / 4), y = yOf(p);
+    x.fillText(compact(p), 4, Math.min(h - 2, Math.max(9, y + 3)));
+    x.strokeStyle = 'rgba(120,123,134,.14)';
+    x.beginPath(); x.moveTo(labelW, y); x.lineTo(w, y); x.stroke();
+  }
+
+  // Aktueller Preis
+  var py = yOf(m.price);
+  x.strokeStyle = css('--blue-lt'); x.lineWidth = 1;
+  x.setLineDash([4, 3]);
+  x.beginPath(); x.moveTo(labelW, py); x.lineTo(w, py); x.stroke();
+  x.setLineDash([]);
+  x.fillStyle = css('--blue-lt');
+  x.font = '700 10px system-ui';
+  x.fillText(num(m.price, 0), labelW + 4, py - 4);
+}
+
+function loadLiqMap() {
+  api(q('/api/liquidation_map')).then(function (m) {
+    drawLiqMap(m);
+    $('lmMeta').textContent = compact(m.oiUsd) + ' OI · ' + (m.levels || []).length + ' Level';
+
+    var cl = (m.clustersBelow || []).concat(m.clustersAbove || []);
+    cl.sort(function (a, b) { return Math.abs(a.distPct) - Math.abs(b.distPct); });
+    $('clusters').innerHTML = cl.length ? cl.slice(0, 6).map(function (c) {
+      var up = c.distPct > 0;
+      return '<div class="cluster">' +
+        '<span class="badge ' + (c.side === 'long' ? 'long' : 'short') + '">' + esc(c.side) + '</span>' +
+        '<span>' + num(c.price, 0) + '</span>' +
+        '<span style="color:var(--muted)">' + compact(c.usd) + '</span>' +
+        '<span class="dist ' + (up ? 'up' : 'down') + '">' +
+          (up ? '+' : '') + num(c.distPct, 2) + '%</span>' +
+      '</div>';
+    }).join('') : '<div class="empty">keine Cluster</div>';
+  }).catch(function () {
+    $('clusters').innerHTML = '<div class="empty">nicht erreichbar</div>';
+  });
+}
+
+// ── Symbolliste ────────────────────────────────────────────────────────────
+function loadSymbols() {
+  return api('/api/symbols?exchange=' + encodeURIComponent(State.exchange))
+    .then(function (j) {
+      var list = j.symbols || j || [];
+      list = list.map(function (s) { return typeof s === 'string' ? s : s.symbol; })
+                 .filter(Boolean);
+      if (list.indexOf(State.symbol) < 0) list.unshift(State.symbol);
+      $('symbol').innerHTML = list.slice(0, 300).map(function (s) {
+        return '<option' + (s === State.symbol ? ' selected' : '') + '>' + esc(s) + '</option>';
+      }).join('');
+    })
+    .catch(function () {
+      $('symbol').innerHTML = '<option>' + esc(State.symbol) + '</option>';
+    });
+}
+
+function loadAll() {
+  loadTicker();
+  loadHistories();
+  loadOrderbook();
+  loadLiqMap();
+}
+
+$('symbol').onchange = function () {
+  State.symbol = this.value;
+  localStorage.setItem('tp_data_symbol', State.symbol);
+  loadAll();
+};
+$('exchange').onchange = function () {
+  State.exchange = this.value;
+  localStorage.setItem('tp_data_exchange', State.exchange);
+  loadSymbols().then(loadAll);
+};
+
+// Beim Zurueckdrehen/Groessenwechsel neu zeichnen — Canvas skaliert nicht selbst.
+var rt = null;
+window.addEventListener('resize', function () {
+  clearTimeout(rt);
+  rt = setTimeout(function () { loadHistories(); loadLiqMap(); }, 180);
+});
+
+// Zustand merken, damit man nach dem Wechsel nicht neu auswaehlen muss.
+State.symbol = localStorage.getItem('tp_data_symbol') || 'BTCUSDT';
+State.exchange = localStorage.getItem('tp_data_exchange') || 'binance';
+$('exchange').value = State.exchange;
+
+loadSymbols().then(loadAll);
+// Orderbuch und Kennzahlen laufen schneller nach als die Liq-Map, die
+// deutlich mehr Rohdaten verarbeitet.
+setInterval(function () { loadTicker(); loadOrderbook(); }, 5000);
+setInterval(function () { loadHistories(); loadLiqMap(); }, 60000);
+</script>
+</body>
+</html>
