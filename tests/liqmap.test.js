@@ -120,7 +120,10 @@ const mock = {
 // Die Renderfunktionen aus app.html isoliert auswerten. Wir ziehen den
 // Liquidation-Map-Block aus dem Quelltext und fuehren ihn im DOM-Kontext aus.
 const start = html.indexOf('//  LIQUIDATION MAP');
-const end = html.indexOf("document.querySelectorAll('.side-tab')", start);
+// Anker auf den Reiter-Handler. Der Selektor schliesst inzwischen den
+// Link auf /trading aus (.side-tab:not(.side-link)), darum ohne Klammer
+// suchen, damit der Schnitt nicht wieder mitten im Skript endet.
+const end = html.indexOf("document.querySelectorAll('.side-tab", start);
 chk('Liquidation-Map-Codeblock gefunden', start > 0 && end > start);
 const block = html.slice(start, end);
 

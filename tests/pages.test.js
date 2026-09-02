@@ -145,6 +145,40 @@ chk('/trading markiert sich selbst als aktiv',
 chk('/daten markiert sich selbst als aktiv',
   !!dAct && dAct.getAttribute('href') === '/daten');
 
+// ══ Keine doppelten Bereiche ══════════════════════════════════════════════
+// Nach dem Umzug lagen Signale/Strategien/Statistik sowohl in der Sidebar
+// als auch auf /trading — der Nutzer sah dieselben Daten an zwei Orten.
+console.log('── Keine Dopplungen ──');
+
+const sideTabs = Array.from(ad.querySelectorAll('.side-tabs .side-tab'))
+  .map(t => t.dataset.tab).filter(Boolean);
+chk('Sidebar hat keinen Signale-Reiter mehr', sideTabs.indexOf('signals') < 0, sideTabs.join(','));
+chk('Sidebar hat keinen Strategien-Reiter mehr', sideTabs.indexOf('strategies') < 0);
+chk('Sidebar hat keinen Statistik-Reiter mehr', sideTabs.indexOf('stats') < 0);
+chk('Sidebar behaelt den Chart-Kontext', 
+  ['futures', 'orderbook', 'liqmap'].every(t => sideTabs.indexOf(t) >= 0), sideTabs.join(','));
+chk('Sidebar verweist auf /trading',
+  !!ad.querySelector('.side-tabs a.side-link[href="/trading"]'));
+// Der Verweis darf den Reiter-Wechsel nicht ausloesen, sonst verschwinden
+// alle Panes auf einmal.
+chk('Verweis ist vom Reiter-Wechsel ausgenommen',
+  /querySelectorAll\('\.side-tab:not\(\.side-link\)'\)/.test(app.body));
+
+// ══ Kopfleiste auf dem Handy ══════════════════════════════════════════════
+// Beide Boersennamen nebeneinander haben die halbe Leiste belegt und die
+// Chart-Werkzeuge verdraengt.
+console.log('── Mobile Kopfleiste ──');
+const mobileCss = app.body.slice(app.body.indexOf('@media (max-width: 820px)'));
+chk('mobil ist nur die aktive Boerse sichtbar',
+  /\.ex-btn\s*\{\s*display:\s*none/.test(mobileCss) &&
+  /\.ex-btn\.active\s*\{[^}]*display:\s*block/.test(mobileCss));
+chk('Tap auf die aktive Boerse wechselt mobil',
+  /compact && b\.classList\.contains\('active'\)/.test(app.body));
+chk('Signal-Knopf ist mobil ausgeblendet',
+  /#signalRefreshTop\s*\{\s*display:\s*none/.test(mobileCss));
+chk('Topbar-Verknuepfungen sind mobil ausgeblendet',
+  /\.nav-page\s*\{\s*display:\s*none/.test(mobileCss));
+
 // ══ Ergebnis ══════════════════════════════════════════════════════════════
 console.log('\n' + pass + ' PASS, ' + fail + ' FAIL');
 if (fail) { console.log('TESTS FEHLGESCHLAGEN'); process.exit(1); }
